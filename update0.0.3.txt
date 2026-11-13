@@ -1,0 +1,1011 @@
+=== FILE: app/src/main/assets/index.html ===
+<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#05050f"><title>HiBlue</title>
+<style>
+:root{--bg:#05050f;--sf:rgba(255,255,255,.055);--sf2:rgba(255,255,255,.1);--ln:rgba(255,255,255,.1);--tx:#f5f5ff;--mu:#9d9dc4;--v:#8b5cf6;--bad:#ff6b8a;--ok:#34d399;--g:linear-gradient(135deg,#c084fc 0%,#6366f1 48%,#22d3ee 100%);--hh:58px;--nh:68px;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font:15px/1.4 ui-rounded,"SF Pro Rounded",system-ui,Roboto,sans-serif;-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input{-webkit-user-select:text;user-select:text;font:inherit;color:inherit;outline:0;border:0;background:none;width:100%;min-width:0}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-action:manipulation;text-align:inherit}
+.aurora{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.aurora i{position:absolute;border-radius:50%;filter:blur(72px);opacity:.5;animation:drift 18s ease-in-out infinite alternate}
+.aurora i:nth-child(1){width:330px;height:330px;background:#6d28d9;top:-100px;left:-110px}
+.aurora i:nth-child(2){width:300px;height:300px;background:#1d4ed8;bottom:-90px;right:-110px;animation-delay:-6s}
+.aurora i:nth-child(3){width:220px;height:220px;background:#0891b2;top:44%;left:56%;opacity:.25;animation-delay:-12s}
+@keyframes drift{to{transform:translate(40px,50px) scale(1.15)}}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes pulse{50%{opacity:.5;transform:scale(1.1)}}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes fade{to{opacity:1}}
+@keyframes fadeIn{from{opacity:0}}
+@keyframes orbit{to{transform:rotate(360deg)}}
+.noanim *,.noanim *:before,.noanim *:after{animation:none!important;transition:none!important}
+/* ---- logo ---- */
+.wm{display:inline-flex;font-size:21px;line-height:1;letter-spacing:-.03em;white-space:nowrap;color:#fff}
+.wm b{font-weight:300}
+.wm em{font-style:normal;font-weight:800;background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent}
+.wm.xl{font-size:44px}
+.mk{display:block;width:100%;height:100%}
+.draw .mk-b{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.3s .25s cubic-bezier(.5,0,.2,1) forwards}
+.draw .mk-r{opacity:0;animation:fade 1s 1s forwards}
+.draw .mk-d{opacity:0;transform-origin:54px 54px;animation:fade .5s 1.5s forwards,orbit 9s linear 1.5s infinite}
+.noanim .draw .mk-b{stroke-dashoffset:0}.noanim .draw .mk-r,.noanim .draw .mk-d{opacity:1}.noanim .sp-wm{opacity:1}
+/* ---- splash ---- */
+#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);transition:opacity .6s,visibility .6s}
+#splash.out{opacity:0;visibility:hidden}
+.sp-mark{position:relative;width:150px;height:150px}
+.sp-mark:before{content:"";position:absolute;inset:-50px;border-radius:50%;background:radial-gradient(closest-side,rgba(99,102,241,.5),rgba(34,211,238,.1) 70%,transparent);animation:pulse 2.6s ease-in-out infinite}
+.sp-mark .mk{position:relative}
+.sp-wm{margin-top:30px;opacity:0;animation:rise .8s 1.3s both}
+/* ---- auth ---- */
+#auth{position:fixed;inset:0;z-index:50;display:none;overflow-y:auto;padding:calc(var(--sat) + 22px) 20px calc(var(--sab) + 24px)}
+#auth.on{display:block}
+.au{max-width:420px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;justify-content:center}
+.au-top{text-align:center;margin-bottom:24px;animation:rise .7s both}
+.logo{width:92px;height:92px;margin:0 auto 18px;border-radius:30px;display:grid;place-items:center;background:linear-gradient(160deg,rgba(255,255,255,.09),rgba(255,255,255,.02));border:1px solid var(--ln);box-shadow:0 14px 50px rgba(99,102,241,.35),inset 0 1px 0 rgba(255,255,255,.1)}
+.logo .mk{width:72px;height:72px}
+.tag{color:var(--mu);margin-top:10px;font-size:14px}
+.card{background:linear-gradient(160deg,rgba(255,255,255,.085),rgba(255,255,255,.035));border:1px solid var(--ln);border-radius:28px;padding:20px;-webkit-backdrop-filter:blur(26px);backdrop-filter:blur(26px);box-shadow:0 24px 70px rgba(0,0,0,.5);animation:rise .7s .12s both}
+.seg{position:relative;display:flex;background:rgba(0,0,0,.35);border:1px solid var(--ln);border-radius:16px;padding:4px;margin-bottom:18px}
+.seg .th{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:12px;background:var(--g);box-shadow:0 6px 20px rgba(99,102,241,.45);transition:transform .35s cubic-bezier(.3,1.2,.4,1)}
+.seg button{position:relative;flex:1;padding:10px 0;font-weight:700;font-size:14px;color:var(--mu);transition:color .25s;text-align:center}
+.seg button.on{color:#fff}
+.up .seg .th{transform:translateX(100%)}
+.fup{display:grid;grid-template-rows:0fr;transition:grid-template-rows .38s ease}
+.fup>div{min-height:0;overflow:hidden}
+.up .fup{grid-template-rows:1fr}
+.fld{position:relative;display:flex;align-items:center;gap:10px;height:54px;padding:0 14px;margin-bottom:12px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid var(--ln);color:var(--mu);transition:.2s}
+.fld:focus-within{border-color:var(--v);color:#c4b5fd;box-shadow:0 0 0 4px rgba(139,92,246,.18);background:rgba(255,255,255,.08)}
+.fld svg,.ib svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.fld input{color:var(--tx);font-size:15.5px}
+.fld input::placeholder{color:#7b7ba3}
+.fld .eye{display:grid;place-items:center;width:34px;height:34px;margin-right:-8px;color:var(--mu)}
+.fld .st{font-size:13px;font-weight:700;white-space:nowrap}
+.st.ok{color:var(--ok)}.st.no{color:var(--bad)}
+.hint{font-size:12px;color:var(--mu);margin:-4px 4px 12px}
+.msg{min-height:20px;font-size:13.5px;margin:2px 4px 10px;color:var(--bad)}
+.msg.info{color:#a5f3fc}
+.msg.shake{animation:shake .4s}
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;height:54px;border-radius:16px;background:var(--g);font-weight:800;font-size:16px;color:#fff;text-align:center;box-shadow:0 10px 30px rgba(99,102,241,.5);transition:transform .15s,opacity .2s}
+.btn:active{transform:scale(.97)}
+.btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn.sm{height:44px;font-size:14px;flex:1;box-shadow:none}
+.btn.ghost{background:var(--sf2);border:1px solid var(--ln)}
+.btn.dng{background:linear-gradient(135deg,#fb7185,#e11d48)}
+.btn.busy{opacity:.8;pointer-events:none;color:transparent}
+.btn.busy:after{content:"";position:absolute;inset:0;margin:auto;width:22px;height:22px;border-radius:50%;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;animation:spin .7s linear infinite}
+/* ---- aplicația ---- */
+#app{position:fixed;inset:0;z-index:10;display:none;flex-direction:column}
+#app.on{display:flex;animation:rise .5s both}
+.hd{position:relative;z-index:20;flex:none;height:calc(var(--hh) + var(--sat));padding:var(--sat) 8px 0 6px;display:flex;align-items:center;gap:2px;background:linear-gradient(rgba(5,5,15,.92),rgba(5,5,15,.62));-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,.06)}
+.ib{position:relative;flex:none;width:42px;height:42px;border-radius:14px;display:grid;place-items:center;color:#d4d4fa;transition:.18s}
+.ib:active{background:var(--sf2);transform:scale(.9)}
+.ib svg{width:23px;height:23px;stroke-width:1.9}
+.ib .dot{position:absolute;top:9px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--g);box-shadow:0 0 0 2px var(--bg)}
+.hd .wm{margin-left:4px}
+.mid{flex:1;min-width:0;display:flex;justify-content:flex-end;padding:0 6px}
+.srch{display:flex;align-items:center;gap:8px;width:100%;max-width:190px;height:36px;padding:0 12px;border-radius:18px;background:var(--sf);border:1px solid var(--ln);color:var(--mu);animation:rise .3s both}
+.srch[hidden]{display:none}
+.srch svg{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.srch input{font-size:14px;color:var(--tx)}
+#stage{position:relative;flex:1;min-height:0}
+.room{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding-bottom:calc(var(--nh) + 30px + var(--sab));opacity:0;visibility:hidden;transform:translateY(10px);transition:opacity .28s,transform .28s,visibility .28s}
+.room.on{opacity:1;visibility:visible;transform:none}
+.empty{height:100%;min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:var(--mu);padding:0 40px}
+.empty .ring{width:84px;height:84px;border-radius:28px;display:grid;place-items:center;background:var(--sf);border:1px solid var(--ln);box-shadow:0 0 46px rgba(99,102,241,.3);margin-bottom:6px}
+.empty .ring svg{width:36px;height:36px;fill:none;stroke:url(#gr);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.empty h2{font-size:19px;color:var(--tx);letter-spacing:-.3px}
+.empty p{font-size:13px}
+.nav{position:fixed;z-index:30;left:12px;right:12px;bottom:calc(10px + var(--sab));height:var(--nh);display:flex;border-radius:28px;background:rgba(14,14,34,.74);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid var(--ln);box-shadow:0 14px 44px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.07)}
+.tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:700;color:var(--mu);transition:color .25s;text-align:center}
+.tb .ic{width:48px;height:30px;border-radius:15px;display:grid;place-items:center;transition:.35s cubic-bezier(.3,1.3,.4,1)}
+.tb svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tb:active .ic{transform:scale(.9)}
+.tb.on{color:#fff}
+.tb.on .ic{background:rgba(139,92,246,.2);box-shadow:0 0 24px rgba(99,102,241,.45);transform:translateY(-1px)}
+.tb.on svg{stroke:url(#gr)}
+/* ---- drawer ---- */
+.shade{position:fixed;inset:0;z-index:60;background:rgba(2,2,10,.6);opacity:0;visibility:hidden;transition:.3s}
+.dr{position:fixed;z-index:61;top:0;bottom:0;left:0;width:min(84%,330px);display:flex;flex-direction:column;padding:calc(var(--sat) + 20px) 14px calc(var(--sab) + 16px);background:linear-gradient(180deg,#0d0d26,#07071a);border-right:1px solid var(--ln);box-shadow:20px 0 60px rgba(0,0,0,.6);transform:translateX(-102%);transition:transform .36s cubic-bezier(.3,.9,.3,1);overflow-y:auto}
+.drawer.open .shade{opacity:1;visibility:visible}
+.drawer.open .dr{transform:none}
+.dh{padding:2px 8px 18px}
+.dh .wm{font-size:26px}
+.grow{flex:1}
+.di{display:flex;align-items:center;gap:13px;width:100%;padding:11px 10px;border-radius:16px;transition:background .15s}
+.di:active{background:var(--sf2)}
+.di .ri,.row .ri{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:rgba(139,92,246,.16);color:#c4b5fd;flex:none}
+.di .ri svg,.row .ri svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.di .dt{flex:1;font-weight:600;font-size:15.5px}
+.di .dt small{display:block;font-weight:400;font-size:12px;color:var(--mu)}
+.di .ch{display:grid;place-items:center;transition:transform .3s}
+.di .ch svg,.row .ch svg{width:18px;height:18px;fill:none;stroke:var(--mu);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.di.open .ch{transform:rotate(90deg)}
+.di.s{padding-left:26px}
+.sub{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s ease}
+.sub>div{min-height:0;overflow:hidden}
+.sub.open{grid-template-rows:1fr}
+.acc{display:flex;align-items:center;gap:12px;width:100%;padding:12px;border-radius:18px;background:var(--sf);border:1px solid var(--ln)}
+.acc .av,.usr .av{width:42px;height:42px;border-radius:14px;background:var(--g);display:grid;place-items:center;font-weight:800;font-size:18px;flex:none}
+.acc b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acc small{color:var(--mu);font-size:12px}
+.acc div{min-width:0}
+/* ---- pagini ---- */
+.pg{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;background:radial-gradient(120% 60% at 50% -10%,#14123a,var(--bg) 60%);transform:translateX(26px);opacity:0;transition:transform .3s,opacity .3s}
+.pg.in{transform:none;opacity:1}
+.ph{flex:none;display:flex;align-items:center;gap:6px;height:calc(var(--hh) + var(--sat));padding:var(--sat) 12px 0 6px;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(5,5,15,.9)}
+.ph h1{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.pb{flex:1;overflow-y:auto;padding:16px 16px calc(var(--sab) + 28px)}
+.grp{margin-bottom:20px}
+.gt{font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--mu);margin:0 6px 8px}
+.rows{border-radius:20px;background:var(--sf);border:1px solid var(--ln);overflow:hidden}
+.row{display:flex;align-items:center;gap:13px;width:100%;padding:13px 14px;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer}
+.row:last-child{border-bottom:0}
+.row:active{background:var(--sf2)}
+.row .rt{flex:1;min-width:0}
+.row .rt b{display:block;font-weight:600;font-size:15px}
+.row .rt small{color:var(--mu);font-size:12.5px}
+.row .rv{color:var(--mu);font-size:13.5px}
+.row .ch{display:grid;place-items:center}
+.row.danger .rt b{color:#ffb4c4}.row.danger .ri{background:rgba(255,107,138,.14);color:#ff9db3}
+.sw{width:46px;height:28px;border-radius:14px;background:rgba(255,255,255,.14);position:relative;transition:.25s;flex:none}
+.sw:after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.25s;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.tg.on .sw{background:var(--g)}.tg.on .sw:after{transform:translateX(18px)}
+.note{color:var(--mu);font-size:13px;text-align:center;padding:10px 12px}
+.chip{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--sf2);color:var(--mu)}
+.chip.ok{background:rgba(52,211,153,.14);color:var(--ok)}
+.src{padding:16px;margin-bottom:14px;border-radius:22px;background:var(--sf);border:1px solid var(--ln)}
+.src .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.src .sh b{font-size:16px}
+.src>p{color:var(--mu);font-size:13px;margin-bottom:12px}
+.src .sb{display:flex;gap:10px}
+.src .ss{font-size:12.5px;color:var(--mu);margin-top:10px;min-height:16px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{padding:16px;border-radius:20px;background:var(--sf);border:1px solid var(--ln)}
+.stat b{display:block;font-size:28px;font-weight:800;letter-spacing:-1px;background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat small{color:var(--mu);font-size:12.5px}
+.usr{display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:18px;background:var(--sf);border:1px solid var(--ln)}
+.usr .ui{flex:1;min-width:0}
+.usr .ui b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.usr .ui b i{font-style:normal;color:#a5b4fc;font-weight:500}
+.usr .ui small{display:block;color:var(--mu);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.usr .del{color:#ff9db3}
+.about{text-align:center;padding-top:30px}
+.about .logo{width:110px;height:110px}.about .logo .mk{width:86px;height:86px}
+.about p{color:var(--mu);margin-top:8px;font-size:13.5px}
+.mdl{position:fixed;inset:0;z-index:300;display:grid;place-items:center;padding:24px;background:rgba(2,2,10,.7);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:fadeIn .2s both}
+.mc{width:100%;max-width:340px;padding:22px;border-radius:24px;background:#10102b;border:1px solid var(--ln);box-shadow:0 30px 80px rgba(0,0,0,.7)}
+.mc h3{font-size:18px;margin-bottom:6px}.mc p{color:var(--mu);font-size:14px;margin-bottom:18px}
+.mb{display:flex;gap:10px}
+.toast{position:fixed;z-index:400;left:50%;bottom:calc(var(--nh) + 36px + var(--sab));transform:translate(-50%,20px);padding:11px 18px;border-radius:16px;background:rgba(20,20,48,.95);border:1px solid var(--ln);font-size:13.5px;opacity:0;transition:.3s;pointer-events:none;max-width:86%;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ===== Games · Truth or Dare v2 ===== */
+.tod-wrap{height:100%;display:flex;flex-direction:column}
+.tod-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.tod-hero{display:flex;flex-direction:column;align-items:center;padding:30px 16px 12px;text-align:center}
+.tod-logo{width:110px;height:110px;position:relative;animation:hb-float 4s ease-in-out infinite;filter:drop-shadow(0 10px 30px rgba(139,92,246,.5))}
+.tod-logo svg{width:100%;height:100%}
+.tod-logo .spk{position:absolute;width:16px;height:16px;animation:hb-spin 6s linear infinite;opacity:.8}
+.tod-logo .spk:nth-child(2){top:-8px;right:6px;animation-duration:8s}
+.tod-logo .spk:nth-child(3){bottom:0;left:-10px;animation-duration:7s;animation-direction:reverse}
+.tod-logo .spk svg{width:16px;height:16px}
+@keyframes hb-float{50%{transform:translateY(-8px)}}
+@keyframes hb-spin{to{transform:rotate(360deg)}}
+@keyframes hb-rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes hb-pop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+@keyframes hb-pulse{50%{opacity:.5;transform:scale(1.08)}}
+.tod-hero h1{font-size:26px;font-weight:800;margin-top:16px;letter-spacing:-.5px;background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent;animation:hb-rise .6s .1s both}
+.tod-hero p{font-size:13.5px;color:var(--mu);margin-top:6px;max-width:280px;line-height:1.45;animation:hb-rise .6s .2s both}
+.tod-badges{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-top:14px;animation:hb-rise .6s .3s both}
+.tod-badge{padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;background:var(--sf);border:1px solid var(--ln);color:var(--mu)}
+.tod-badge.hot{background:rgba(236,72,153,.12);border-color:rgba(236,72,153,.3);color:#fda4af}
+.tod-badge.n{background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.25);color:#c4b5fd}
+.tod-hub-body{padding:0 16px 20px}
+.tod-start{background:linear-gradient(135deg,rgba(139,92,246,.12),rgba(34,211,238,.05));border:1px solid var(--ln);border-radius:24px;padding:20px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:transform .18s;animation:hb-rise .6s .4s both}
+.tod-start:active{transform:scale(.97)}
+.tod-start-ic{width:60px;height:60px;border-radius:20px;background:var(--g);display:grid;place-items:center;flex:none;box-shadow:0 8px 24px rgba(99,102,241,.45)}
+.tod-start-ic svg{width:28px;height:28px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tod-start-in{flex:1;text-align:left}
+.tod-start-in h3{font-size:17px;font-weight:700;margin-bottom:2px}
+.tod-start-in p{font-size:12.5px;color:var(--mu)}
+.tod-start-go{width:40px;height:40px;border-radius:14px;background:var(--sf2);display:grid;place-items:center;flex:none}
+.tod-start-go svg{width:18px;height:18px;fill:none;stroke:var(--mu);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.tod-screen{padding:10px 16px 20px}
+.tod-top{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.tod-back{width:40px;height:40px;border-radius:14px;background:var(--sf);display:grid;place-items:center;color:var(--mu);flex:none;transition:.18s}
+.tod-back:active{transform:scale(.88);background:var(--sf2)}
+.tod-back svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tod-top h2{font-size:19px;font-weight:700;flex:1;letter-spacing:-.3px}
+.tod-sec{margin-bottom:20px}
+.tod-sec-t{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-weight:700}
+.tod-stepper{display:flex;align-items:center;gap:16px;justify-content:center;background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid var(--ln);border-radius:20px;padding:14px}
+.tod-stepper button{width:46px;height:46px;border-radius:14px;background:var(--sf2);font-size:24px;font-weight:700;color:var(--tx);display:grid;place-items:center;flex:none;transition:.15s}
+.tod-stepper button:active{transform:scale(.88);background:var(--v);color:#fff}
+.tod-stepper .val{font-size:32px;font-weight:800;min-width:55px;text-align:center;background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent}
+.tod-stepper .lbl{font-size:11px;color:var(--mu);text-align:center;letter-spacing:.5px}
+.tod-seg2{display:flex;background:var(--sf);border:1px solid var(--ln);border-radius:16px;padding:4px}
+.tod-seg2 button{flex:1;padding:11px;border-radius:12px;font-weight:600;font-size:13px;color:var(--mu);transition:.2s}
+.tod-seg2 button.on{background:var(--g);color:#fff;box-shadow:0 4px 14px rgba(99,102,241,.4)}
+.tod-names{display:flex;flex-direction:column;gap:8px}
+.tod-name{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid var(--ln);border-radius:16px;padding:0 12px;height:52px;transition:.18s}
+.tod-name:focus-within{border-color:var(--v);box-shadow:0 0 0 3px rgba(139,92,246,.15)}
+.tod-name .av{width:28px;height:28px;border-radius:10px;background:var(--g);display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;flex:none}
+.tod-name input{flex:1;color:var(--tx);font-size:15px;min-width:0}
+.tod-name .gnd{display:flex;gap:4px;flex:none}
+.tod-name .gnd button{width:30px;height:30px;border-radius:9px;background:var(--sf2);font-size:10px;font-weight:700;color:var(--mu);transition:.15s}
+.tod-name .gnd button.on.m{background:#3b82f6;color:#fff}
+.tod-name .gnd button.on.f{background:#ec4899;color:#fff}
+.tod-name .gnd button.on.o{background:#8b5cf6;color:#fff}
+.tod-genres{display:flex;flex-direction:column;gap:8px}
+.tod-chip{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.015));border:1px solid var(--ln);border-radius:16px;padding:12px 14px;cursor:pointer;transition:.18s}
+.tod-chip.on{border-color:var(--v);background:rgba(139,92,246,.1);box-shadow:0 0 16px rgba(139,92,246,.15)}
+.tod-chip .ck{width:22px;height:22px;border-radius:8px;border:2px solid rgba(255,255,255,.12);flex:none;display:grid;place-items:center;transition:.2s}
+.tod-chip.on .ck{background:var(--g);border-color:transparent}
+.tod-chip.on .ck:after{content:"";width:5px;height:9px;border-right:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(45deg) translate(-1px,-1px)}
+.tod-chip .ci{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;flex:none;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.tod-chip .ci svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tod-chip .ct{flex:1;min-width:0}
+.tod-chip .ct b{display:block;font-size:14px;font-weight:600}
+.tod-chip .ct small{font-size:11.5px;color:var(--mu)}
+.tod-chip .ct .cnt{font-size:10px;color:var(--mu);margin-top:1px}
+.tod-review{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid var(--ln);border-radius:20px;padding:16px;margin-bottom:14px}
+.tod-review h4{font-size:11px;color:var(--mu);margin-bottom:10px;text-transform:uppercase;letter-spacing:.6px;font-weight:700}
+.tod-review .pl{display:flex;flex-wrap:wrap;gap:6px}
+.tod-review .pl span{padding:5px 12px;border-radius:11px;background:var(--sf2);font-size:13px}
+.tod-review .gl{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tod-review .gl span{padding:5px 12px;border-radius:11px;background:rgba(139,92,246,.15);font-size:12px;color:#c4b5fd;font-weight:600}
+.tod-review .cl{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tod-review .cl span{padding:5px 12px;border-radius:11px;background:rgba(236,72,153,.12);font-size:12px;color:#fda4af;font-weight:600}
+.tod-couples-info{background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:14px;padding:12px;margin-bottom:14px;font-size:13px;color:#c4b5fd;line-height:1.4}
+.tod-pair-list{display:flex;flex-direction:column;gap:8px}
+.tod-pair{display:flex;align-items:center;gap:10px;background:var(--sf);border:2px solid var(--ln);border-radius:16px;padding:10px 12px;transition:.2s;cursor:pointer}
+.tod-pair.paired{border-color:var(--v);background:rgba(139,92,246,.08)}
+.tod-pair.wild{border-color:#f59e0b;background:rgba(245,158,11,.08)}
+.tod-pair.sel{border-color:#f59e0b;background:rgba(245,158,11,.12);transform:scale(.98)}
+.tod-pair .pi{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;flex:none}
+.tod-pair .pn{flex:1;font-size:14px;font-weight:600}
+.tod-pair .pt{font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px}
+.tod-pair.paired .pt{background:rgba(139,92,246,.2);color:#c4b5fd}
+.tod-pair.wild .pt{background:rgba(245,158,11,.2);color:#fbbf24}
+.tod-pair-btns{display:flex;gap:8px;margin-top:12px}
+.tod-go{width:100%;height:54px;border-radius:18px;background:var(--g);font-weight:800;font-size:16px;color:#fff;box-shadow:0 10px 30px rgba(99,102,241,.5);transition:transform .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.tod-go:active{transform:scale(.97)}
+.tod-go:disabled{opacity:.3;pointer-events:none}
+.tod-go.alt{background:linear-gradient(135deg,#ec4899,#f43f5e);box-shadow:0 10px 30px rgba(236,72,153,.5)}
+.tod-go svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.tod-play{display:flex;flex-direction:column;height:100%;padding:8px 16px calc(var(--nh) + 12px)}
+.tod-play-top{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.tod-exit{width:38px;height:38px;border-radius:13px;background:var(--sf);display:grid;place-items:center;color:var(--mu);flex:none;transition:.15s}
+.tod-exit:active{transform:scale(.88)}
+.tod-exit svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tod-play-top h2{font-size:16px;font-weight:700;flex:1}
+.tod-round{font-size:11px;color:var(--mu);padding:4px 11px;background:var(--sf);border-radius:11px;font-weight:600;flex:none}
+.tod-order{display:flex;gap:4px;justify-content:center;margin:2px 0 8px;flex-wrap:wrap}
+.tod-od{width:7px;height:7px;border-radius:50%;background:var(--sf);transition:.3s}
+.tod-od.active{background:var(--g);width:24px;border-radius:4px;box-shadow:0 0 12px rgba(139,92,246,.6)}
+.tod-od.done{background:var(--sf2)}
+.tod-cp{text-align:center;margin:6px 0;animation:hb-pop .4s both}
+.tod-cp .av{width:56px;height:56px;border-radius:20px;background:var(--g);display:grid;place-items:center;font-size:22px;font-weight:800;color:#fff;margin:0 auto 8px;box-shadow:0 8px 24px rgba(99,102,241,.4);animation:hb-pulse 2.5s ease-in-out infinite}
+.tod-cp .l{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.8px}
+.tod-cp .n{font-size:30px;font-weight:800;background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent;margin:2px 0;line-height:1.15}
+.tod-cp .sk{font-size:11px;color:var(--mu);margin-top:2px}
+.tod-cp .sk b{color:var(--bad)}
+.tod-choice{display:flex;gap:12px;margin:10px 0;animation:hb-rise .35s both}
+.tod-cb{flex:1;padding:28px 12px;border-radius:24px;font-weight:800;font-size:18px;display:flex;flex-direction:column;align-items:center;gap:8px;color:#fff;transition:transform .15s;position:relative;overflow:hidden}
+.tod-cb:active{transform:scale(.95)}
+.tod-cb svg{width:32px;height:32px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tod-cb.truth{background:linear-gradient(135deg,#6366f1,#8b5cf6);box-shadow:0 8px 28px rgba(99,102,241,.45)}
+.tod-cb.dare{background:linear-gradient(135deg,#ec4899,#f43f5e);box-shadow:0 8px 28px rgba(236,72,153,.45)}
+.tod-qc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid var(--ln);border-radius:28px;padding:24px;margin:6px 0;min-height:130px;animation:hb-pop .35s both;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.tod-qg{font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.6px;padding:4px 12px;background:var(--sf);border-radius:11px;margin-bottom:16px;font-weight:700}
+.tod-qg.adult{background:rgba(236,72,153,.15);color:#fda4af}
+.tod-qt{font-size:18px;font-weight:600;text-align:center;line-height:1.55;max-width:320px}
+.tod-acts{display:flex;gap:12px;margin-top:4px}
+.tod-ab{flex:1;height:50px;border-radius:16px;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;transition:transform .15s}
+.tod-ab svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.tod-ab.pri{background:var(--g);color:#fff;box-shadow:0 6px 18px rgba(99,102,241,.4)}
+.tod-ab.sk{background:var(--sf);color:var(--mu);border:1px solid var(--ln)}
+.tod-ab.consent{background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;box-shadow:0 6px 18px rgba(245,158,11,.4)}
+.tod-ab:active{transform:scale(.97)}
+.tod-aw{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:24px;gap:18px}
+.tod-aw .ic{width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#ec4899,#f43f5e);display:grid;place-items:center;box-shadow:0 12px 40px rgba(236,72,153,.5);animation:hb-pulse 2.5s ease-in-out infinite}
+.tod-aw .ic svg{width:44px;height:44px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tod-aw h2{font-size:24px;font-weight:800;letter-spacing:-.3px;background:linear-gradient(135deg,#ec4899,#f43f5e);-webkit-background-clip:text;background-clip:text;color:transparent}
+.tod-aw p{font-size:14px;color:var(--mu);max-width:320px;line-height:1.5}
+.tod-aw .warn{background:rgba(236,72,153,.08);border:1px solid rgba(236,72,153,.2);border-radius:18px;padding:16px;font-size:13px;color:#fda4af;line-height:1.5;text-align:left;width:100%;max-width:340px}
+.tod-aw .btns{display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px}
+.tod-aw .yes{height:52px;border-radius:16px;background:linear-gradient(135deg,#ec4899,#f43f5e);color:#fff;font-weight:800;font-size:15px;box-shadow:0 8px 24px rgba(236,72,153,.4);transition:transform .15s}
+.tod-aw .yes:active{transform:scale(.97)}
+.tod-aw .no{height:52px;border-radius:16px;background:var(--sf);color:var(--tx);font-weight:600;font-size:15px;border:1px solid var(--ln)}
+.tod-pass{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:24px;gap:20px}
+.tod-pass .pnum{width:80px;height:80px;border-radius:50%;background:var(--g);display:grid;place-items:center;font-size:32px;font-weight:800;color:#fff;box-shadow:0 12px 40px rgba(99,102,241,.5);animation:hb-float 4s ease-in-out infinite}
+.tod-pass h2{font-size:22px;font-weight:800}
+.tod-pass p{font-size:14px;color:var(--mu);max-width:280px;line-height:1.4}
+.tod-pass .pf{width:100%;max-width:300px}
+.tod-consent-info{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:14px;padding:12px;margin:12px 0;font-size:13px;color:#fbbf24;line-height:1.4;text-align:center}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<linearGradient id="gr" gradientUnits="userSpaceOnUse" x1="2" y1="2" x2="22" y2="22"><stop offset="0" stop-color="#c084fc"/><stop offset=".55" stop-color="#6366f1"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+<linearGradient id="mkG" gradientUnits="userSpaceOnUse" x1="34" y1="28" x2="72" y2="80"><stop offset="0" stop-color="#c084fc"/><stop offset=".55" stop-color="#6366f1"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+</defs></svg>
+<div class="aurora"><i></i><i></i><i></i></div>
+
+<div id="splash"><div class="sp-mark" data-mark="draw"></div><div class="sp-wm" data-wm="xl"></div></div>
+
+<section id="auth"><div class="au" id="authBox">
+ <div class="au-top"><div class="logo" data-mark></div><div data-wm="xl"></div><p class="tag">Bine ai venit.</p></div>
+ <div class="card">
+  <div class="seg"><i class="th"></i><button class="on" data-m="in">Autentificare</button><button data-m="up">Înregistrare</button></div>
+  <div class="fup"><div>
+   <label class="fld"><span data-i="user" style="display:contents"></span><input id="nm" placeholder="Nume afișat" maxlength="32" autocomplete="nickname" autocapitalize="words"></label>
+   <label class="fld"><span data-i="at" style="display:contents"></span><input id="hd" placeholder="utilizator (unic)" maxlength="20" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"><span class="st" id="hst"></span></label>
+   <p class="hint">Litere mici, cifre, _ sau . (3–20 caractere)</p>
+  </div></div>
+  <label class="fld"><span data-i="mail" style="display:contents"></span><input id="em" type="email" inputmode="email" placeholder="Email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false"></label>
+  <label class="fld"><span data-i="lock" style="display:contents"></span><input id="pw" type="password" placeholder="Parolă (minim 6 caractere)" autocomplete="current-password"><button type="button" class="eye" id="eye" aria-label="Arată parola"></button></label>
+  <p class="msg" id="msg"></p>
+  <button class="btn" id="go">Intră</button>
+ </div>
+</div></section>
+
+<div id="app">
+ <header class="hd">
+  <button class="ib" data-act="menu" aria-label="Meniu" data-i="menu"></button>
+  <div data-wm></div>
+  <div class="mid"><div class="srch" id="srch" hidden><span data-i="search" style="display:contents"></span><input placeholder="Caută…" aria-label="Caută"></div></div>
+  <button class="ib" data-act="bell" id="bellB" aria-label="Notificări"></button>
+  <button class="ib" data-act="music" aria-label="Player muzical" data-i="music"></button>
+ </header>
+ <main id="stage"></main>
+ <nav class="nav" id="nav"></nav>
+</div>
+
+<div class="drawer" id="drawer"><div class="shade" data-act="close"></div><aside class="dr" id="dr"></aside></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   HiBlue · update0.0.1
+   Camere (bara de jos) · Drawer · Pagini · Setări · Admin · Full screen
+   ===================================================================== */
+const APP_VERSION="0.0.1";
+const ADMIN_EMAIL="lingurarmarius444@gmail.com";
+const CFG={url:"https://buuqcvipisalolbutzph.supabase.co",key:"sb_publishable_E_FWG55w_rWieyXnHhOOYg_ArYIdGzS"};
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const LS={get(k){try{return JSON.parse(localStorage.getItem("hb."+k))}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem("hb."+k):localStorage.setItem("hb."+k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- iconițe ---------- */
+const P={
+ menu:'<path d="M4 7h16"/><path d="M4 12h11"/><path d="M4 17h6"/>',
+ bell:'<path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 1.5h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>',
+ belloff:'<path d="M6 16.5V11a6 6 0 0 1 9.5-4.9M18 11v5.5l1.5 1.5h-15"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/><path d="M4 4l16 16"/>',
+ music:'<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
+ search:'<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/>',
+ feed:'<rect x="3.5" y="4" width="17" height="7" rx="2.5"/><rect x="3.5" y="13.5" width="17" height="6.5" rx="2.5"/>',
+ globe:'<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.9 5.2 3.9 8.5s-1.3 6.1-3.9 8.5c-2.6-2.4-3.9-5.2-3.9-8.5S9.4 5.9 12 3.5z"/>',
+ games:'<path d="M7 7.5h10a4 4 0 0 1 3.9 3.3l.7 4.2a2.6 2.6 0 0 1-4.5 2.1L15.5 15h-7l-2.1 2.1A2.6 2.6 0 0 1 1.9 15l.7-4.2A4 4 0 0 1 7 7.5z"/><path d="M8 10.5v3M6.5 12h3"/><circle cx="15.5" cy="11.2" r=".7" fill="currentColor"/><circle cx="17.6" cy="13" r=".7" fill="currentColor"/>',
+ chat:'<path d="M20.5 12a8 8 0 0 1-11.7 7.1L4 20.5l1.4-4.5A8 8 0 1 1 20.5 12z"/>',
+ comm:'<circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9.5" r="2.5"/><path d="M16.5 14.6c2.6-.2 4.4 1.3 4.9 4"/>',
+ user:'<circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20c.9-3.6 3.7-5.6 7.2-5.6s6.3 2 7.2 5.6"/>',
+ at:'<circle cx="12" cy="12" r="3.5"/><path d="M15.5 12v1.3a2.2 2.2 0 0 0 4.4 0V12a8 8 0 1 0-3.2 6.4"/>',
+ mail:'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7.5l8 6 8-6"/>',
+ lock:'<rect x="5" y="10.5" width="14" height="9.5" rx="3"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
+ eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
+ eyeoff:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/><path d="M4 4l16 16"/>',
+ back:'<path d="M15 5l-7 7 7 7"/>',
+ chev:'<path d="M9 5l7 7-7 7"/>',
+ shield:'<path d="M12 3l7.5 3v5.5c0 4.6-3.1 8-7.5 9.5-4.4-1.5-7.5-4.9-7.5-9.5V6z"/><path d="M9 12l2.2 2.2L15.5 10"/>',
+ wand:'<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+ tracker:'<path d="M4 4.5V19a1.5 1.5 0 0 0 1.5 1.5H20"/><path d="M8 15.5l3.4-4.2 3 2.4L19 7.5"/><circle cx="19" cy="7.5" r="1" fill="currentColor"/>',
+ film:'<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M8 4.5v15M16 4.5v15M3.5 9.5H8M3.5 14.5H8M16 9.5h4.5M16 14.5h4.5"/>',
+ book:'<path d="M5 4.5h10.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10.5"/>',
+ comics:'<rect x="3.5" y="4" width="7.5" height="9" rx="2"/><rect x="13" y="4" width="7.5" height="5" rx="2"/><rect x="13" y="11" width="7.5" height="9" rx="2"/><rect x="3.5" y="15" width="7.5" height="5" rx="2"/>',
+ sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/>',
+ trash:'<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.8 12a2 2 0 0 0 2 1.8h5.4a2 2 0 0 0 2-1.8L17.5 7"/>',
+ refresh:'<path d="M20 11a8 8 0 0 0-14-4.5L4 9M4 4v5h5M4 13a8 8 0 0 0 14 4.5L20 15M20 20v-5h-5"/>',
+ key:'<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/>',
+ vib:'<rect x="8" y="3.5" width="8" height="17" rx="2.2"/><path d="M4.5 8v8M19.5 8v8"/>',
+ bolt:'<path d="M13 3L5.5 13.5H12L11 21l7.5-10.5H12z"/>',
+ play:'<circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.8l5 3.2-5 3.2z"/>',
+ info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.2"/>',
+ db:'<ellipse cx="12" cy="6.5" rx="7" ry="3"/><path d="M5 6.5v11c0 1.7 3.1 3 7 3s7-1.3 7-3v-11M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>',
+ logout:'<path d="M9 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2H9M15 8l4 4-4 4M19 12H9.5"/>',
+ check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>'
+};
+const I=n=>`<svg viewBox="0 0 24 24">${P[n]}</svg>`;
+const MARK=c=>`<svg class="mk ${c||""}" viewBox="0 0 108 108"><circle class="mk-r" cx="54" cy="54" r="34" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="1.2"/><path class="mk-b" pathLength="1" d="M38 78V30H52a12 12 0 0 1 0 24H38H56a12 12 0 0 1 0 24H38" fill="none" stroke="url(#mkG)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><circle class="mk-d" cx="76" cy="28" r="3" fill="#22d3ee"/></svg>`;
+const WM=x=>`<span class="wm ${x||""}"><b>Hi</b><em>Blue</em></span>`;
+function paint(){
+ $$("[data-i]").forEach(e=>{if(!e.innerHTML)e.innerHTML=I(e.dataset.i)});
+ $$("[data-wm]").forEach(e=>{if(!e.innerHTML)e.innerHTML=WM(e.dataset.wm)});
+ $$("[data-mark]").forEach(e=>{if(!e.innerHTML)e.innerHTML=MARK(e.dataset.mark)})}
+let _tt;function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(_tt);_tt=setTimeout(()=>e.classList.remove("on"),2600)}
+
+/* ---------- setări (persistente) + haptics ---------- */
+const ST=Object.assign({haptics:true,anim:true,notif:true,lang:"ro"},LS.get("set")||{});
+const NAT=()=>window.HBNative||null;
+function hap(k){if(!ST.haptics)return;try{const n=NAT();if(n&&n.tap)n.tap(k||0);else if(navigator.vibrate)navigator.vibrate(k==2?28:k==1?18:10)}catch(e){}}
+function applySet(){document.documentElement.classList.toggle("noanim",!ST.anim);const b=$("#bellB");if(b)b.innerHTML=I(ST.notif?"bell":"belloff")+'<i class="dot" id="bdot" hidden></i>'}
+function toggleSet(k,el){ST[k]=!ST[k];el.classList.toggle("on",ST[k]);LS.set("set",ST);applySet();
+ if(k=="haptics"&&ST.haptics)hap(2);
+ if(k=="notif"&&ST.notif){const n=NAT();if(n&&n.notifPerm)n.notifPerm()}}
+
+/* =====================================================================
+   SUPABASE (REST direct)
+   ===================================================================== */
+const SB={ses:LS.get("ses"),profile:LS.get("profile")};
+async function http(path,o){o=o||{};const c=new AbortController(),t=setTimeout(()=>c.abort(),15000);
+ try{const h=Object.assign({apikey:CFG.key,"Content-Type":"application/json"},o.h||{});if(o.auth&&SB.ses)h.Authorization="Bearer "+SB.ses.access_token;
+  const r=await fetch(CFG.url+path,{method:o.m||"GET",headers:h,body:o.b?JSON.stringify(o.b):undefined,signal:c.signal});let j=null;try{j=await r.json()}catch(e){}return{ok:r.ok,s:r.status,j}}
+ catch(e){return{ok:false,s:0,net:true,j:null}}finally{clearTimeout(t)}}
+const msgOf=r=>(r&&r.j&&(r.j.msg||r.j.message||r.j.error_description||r.j.error))||("HTTP "+(r&&r.s));
+function setSes(j){const u=j.user||{};SB.ses={access_token:j.access_token,refresh_token:j.refresh_token,exp:j.expires_at?j.expires_at*1000:Date.now()+(j.expires_in||3600)*1000,uid:u.id||(SB.ses&&SB.ses.uid)||"",email:u.email||(SB.ses&&SB.ses.email)||""};LS.set("ses",SB.ses)}
+function clearSes(){SB.ses=null;SB.profile=null;LS.set("ses",null);LS.set("profile",null)}
+async function ensure(){if(!SB.ses)return"none";if(SB.ses.exp-60000>Date.now())return"ok";
+ const r=await http("/auth/v1/token?grant_type=refresh_token",{m:"POST",b:{refresh_token:SB.ses.refresh_token}});
+ if(r.ok&&r.j&&r.j.access_token){setSes(r.j);return"ok"}
+ if(r.net||r.s>=500||r.s==429)return"net";clearSes();return"none"}
+async function rest(path,o){let r=await http(path,Object.assign({auth:1},o||{}));if(r.s==401&&SB.ses){SB.ses.exp=0;if(await ensure()=="ok")r=await http(path,Object.assign({auth:1},o||{}))}return r}
+function am(r){const c=r&&r.j&&(r.j.error_code||r.j.code),m=String(msgOf(r)||"").toLowerCase();
+ if(r.net)return"Fără conexiune la internet";
+ if(c=="invalid_credentials"||m.includes("invalid login"))return"Email sau parolă greșită";
+ if(c=="email_not_confirmed"||m.includes("not confirmed"))return"Confirmă emailul înainte de autentificare";
+ if(c=="user_already_exists"||c=="email_exists"||m.includes("already"))return"Email deja folosit – autentifică-te";
+ if(c=="weak_password"||m.includes("password"))return"Parolă prea slabă (minim 6 caractere)";
+ if(c=="over_request_rate_limit"||c=="over_email_send_rate_limit"||r.s==429)return"Prea multe încercări – așteaptă puțin";
+ if(c=="email_address_invalid"||m.includes("email address"))return"Adresă de email invalidă";
+ if(m.includes("database error"))return"Numele de utilizator este ocupat sau invalid";
+ if(c=="signup_disabled")return"Înregistrările sunt oprite momentan";
+ return"Eroare: "+msgOf(r)}
+async function signIn(em,pw){const r=await http("/auth/v1/token?grant_type=password",{m:"POST",b:{email:em,password:pw}});
+ if(r.ok&&r.j&&r.j.access_token){setSes(r.j);return{ok:1}}return{err:am(r)}}
+async function signUp(em,pw,name,handle){const r=await http("/auth/v1/signup",{m:"POST",b:{email:em,password:pw,data:{username:name,handle:handle}}});
+ if(r.ok&&r.j&&r.j.access_token){setSes(r.j);return{ok:1}}
+ if(r.ok&&r.j&&Array.isArray(r.j.identities)&&!r.j.identities.length)return{err:"Email deja folosit – autentifică-te"};
+ if(r.ok)return{info:"Ți-am trimis un email de confirmare. Confirmă-l, apoi autentifică-te."};
+ return{err:am(r)}}
+async function signOut(){try{if(SB.ses)await http("/auth/v1/logout?scope=local",{m:"POST",auth:1})}catch(e){}clearSes()}
+async function handleFree(h){const r=await http("/rest/v1/rpc/handle_available",{m:"POST",b:{h:h}});return r.ok?r.j===true:null}
+async function loadProfile(){if(!SB.ses)return null;
+ const r=await rest("/rest/v1/profiles?id=eq."+SB.ses.uid+"&select=id,username,handle,bio,avatar");
+ if(r.ok&&Array.isArray(r.j)){let p=r.j[0];
+  if(!p){const c=await rest("/rest/v1/profiles?on_conflict=id",{m:"POST",h:{Prefer:"resolution=merge-duplicates,return=representation"},b:{id:SB.ses.uid}});p=c.ok&&Array.isArray(c.j)?c.j[0]:null}
+  if(p){SB.profile=p;LS.set("profile",p)}}
+ return SB.profile}
+const isAdminUI=()=>((SB.ses&&SB.ses.email)||"").toLowerCase()==ADMIN_EMAIL;
+
+/* =====================================================================
+   CAMERE (bara de jos) – le umplem pe rând
+   ===================================================================== */
+const ROOMS=[
+ {id:"feed",label:"Feed",ic:"feed",search:false},
+ {id:"world",label:"World",title:"HiBlue World",ic:"globe",search:false},
+ {id:"games",label:"Games",ic:"games",search:false},
+ {id:"chat",label:"Chat",ic:"chat",search:false},
+ {id:"community",label:"Community",ic:"comm",search:false}
+];
+const Rooms={};
+/* ===== ROOM: Feed ===== */       // Rooms.feed={mount(el){},show(){},hide(){}};
+/* ===== ROOM: World ===== */      // viitor: bump / snap like
+/* ===== ROOM: Games ===== */
+Rooms.games=(function(){
+  var GIC={
+   sun:'<circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3M4.4 4.4l2.1 2.1M17.5 17.5l2.1 2.1M4.4 19.6l2.1-2.1M17.5 6.5l2.1-2.1"/>',
+   social:'<circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9.5" r="2.5"/><path d="M3 19.5c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><path d="M16.5 14.6c2.6-.2 4.4 1.3 4.9 4"/>',
+   secret:'<rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M7.5 10V7a4.5 4.5 0 0 1 9 0v3"/>',
+   weird:'<path d="M12 2.5l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>',
+   dilema:'<path d="M12 3v18M7 7l-4 4 4 4M17 7l4 4-4 4"/>',
+   heart:'<path d="M12 20l-7-7a4.5 4.5 0 0 1 6.4-6.4l.6.6.6-.6a4.5 4.5 0 0 1 6.4 6.4z"/>',
+   fire:'<path d="M12 3c0 4-4 5-4 9a4 4 0 0 0 8 0c0-2-1-3-2-4 0 2-1 3-2 3 0-3 2-5 2-8z"/>',
+   truth:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/><path d="M11 8v6M8 11h6"/>',
+   dare:'<path d="M12 2l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>',
+   play:'<path d="M7 4l13 8-13 8z"/>',
+   back:'<path d="M15 5l-7 7 7 7"/>',
+   exit:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>',
+   check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+   skip:'<path d="M5 4l10 8-10 8zM19 5v14"/>',
+   warn:'<path d="M12 2L1 21h22z"/><path d="M12 9v5M12 17v.5"/>',
+   next:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+   lock2:'<rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M7.5 10V7a4.5 4.5 0 0 1 9 0v3"/><circle cx="12" cy="15" r="1.5"/>',
+   link:'<path d="M9 12a3 3 0 0 1 3-3h3a3 3 0 0 1 0 6h-1M15 12a3 3 0 0 1-3 3H9a3 3 0 0 1 0-6h1"/>'
+  };
+  function GI(n){return '<svg viewBox="0 0 24 24">'+(GIC[n]||'')+'</svg>'}
+
+  var LOGO='<svg viewBox="0 0 100 100"><defs><linearGradient id="tl1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e879f9"/><stop offset="1" stop-color="#6d28d9"/></linearGradient><linearGradient id="tl2" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><circle cx="50" cy="50" r="46" fill="url(#tl1)" opacity=".12"/><circle cx="50" cy="50" r="38" fill="url(#tl1)" opacity=".2"/><path d="M50 8a6 6 0 0 1 6 6v4l8-3a6 6 0 0 1 3 11l-7 4 7 4a6 6 0 0 1-3 11l-8-3v4a6 6 0 0 1-12 0v-4l-8 3a6 6 0 0 1-3-11l7-4-7-4a6 6 0 0 1 3-11l8 3v-4a6 6 0 0 1 6-6z" fill="url(#tl1)"/><circle cx="50" cy="50" r="24" fill="url(#tl2)"/><circle cx="42" cy="46" r="4.5" fill="#05050f"/><circle cx="58" cy="46" r="4.5" fill="#05050f"/><circle cx="43" cy="45" r="1.5" fill="#fff"/><circle cx="59" cy="45" r="1.5" fill="#fff"/><path d="M40 58q10 8 20 0" stroke="#05050f" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M44 54l-2 4M56 54l2 4" stroke="#05050f" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M50 62v3M47 63l1 3M53 63l-1 3" stroke="#05050f" stroke-width="1.5" fill="none" stroke-linecap="round"/><path fill="#fbbf24" d="M18 18l3 8 8 3-8 3-3 8-3-8-8-3 8-3z"/><path fill="#ec4899" d="M82 12l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/><path fill="#22d3ee" d="M86 76l1.5 5 5 1.5-5 1.5-1.5 5-1.5-5-5-1.5 5-1.5z"/></svg>';
+  var SPARK='<span class="spk"><svg viewBox="0 0 24 24"><path fill="#fbbf24" d="M12 2l2.5 7L22 12l-7.5 3L12 22l-2.5-7L2 12l7.5-3z"/></svg></span>';
+
+  var GENRES={"light": {"label": "Light", "desc": "Pentru toată lumea", "ic": "sun", "c": "#fbbf24", "truth": ["Care e cel mai amuzant lucru care ți s-a întâmplat săptămâna asta?", "Dacă ai putea avea o superputere pentru o zi, care ar fi?", "Care e desenul tău animat preferat din copilărie?", "Ce melodie îți rămâne mereu în cap?", "Dacă ai fi un animal, care ai fi și de ce?", "Care e cel mai ciudat lucru pe care l-ai mâncat vreodată?", "Ce superputere NU ai vrea să ai?", "Care e cel mai penibil lucru pe care l-ai făcut în public?", "Dacă ai putea călători în orice epocă, unde ai merge?", "Ce lucru complet inutil știi să faci foarte bine?", "Care e cel mai bun film pe care l-ai văzut recent?", "Dacă ai fi supererou, care ar fi numele tău?", "Ce aliment nu poți suporta deloc?", "Care e obiceiul tău cel mai ciudat?", "Dacă ai putea schimba un singur lucru la tine, ce ar fi?", "Ce faci când nimeni nu te vede?", "Care e cea mai mare prostie pe care ai făcut-o la școală?", "Dacă ai trăi într-un film, în care ai vrea să trăiești?", "Ce frică ai care pare amuzantă altora?", "Care e cel mai bun cadou pe care l-ai primit?", "Dacă {alt} ar fi animal, ce animal ar fi?", "Ce lucru la {alt} te face să râzi mereu?", "Dacă ai fi blocat într-un lift cu {alt}, ce ai face?", "Cine din grup crezi că ar câștiga un concurs de mâncat?", "Ce secret amuzant știi despre {alt}?", "Dacă {alt} ar găti pentru tine, cum ar arăta mâncarea?", "Care e cel mai ciudat obicei al lui {alt}?", "Dacă ai putea schimba vieți cu {alt} pentru o zi, ai face-o?", "Ce compliment ciudat i-ai face lui {alt}?", "Dacă {alt} ar fi un supererou, care ar fi puterea lui?"], "dare": ["Fă o impresie a unui animal timp de 10 secunde.", "Cântă refrenul ultimei melodii pe care ai ascultat-o.", "Comportă-te ca un prezentator de știri timp de 30 de secunde.", "Vorbește cu accent străin până la următoarea ta tură.", "Fă 10 flotări sau 10 genuflexiuni.", "Spune un banc acum.", "Imită-l pe {alt} timp de 30 de secunde.", "Dansează timp de 20 de secunde fără muzică.", "Vorbește în rime timp de următoarele 3 propoziții.", "Fă o față amuzantă și menține-o timp de 10 secunde.", "Mergi ca un model pe podium timp de 15 secunde.", "Încearcă să spui alfabetul invers.", "Fă o impresie de robot timp de 15 secunde.", "Recită o poezie pe care o știi pe de rost.", "Comportă-te ca un bețiv timp de 20 de secunde.", "Fă-i un compliment sincer lui {alt}.", "Imită cum saluți când îl vezi pe {alt}.", "Spune ce îți place cel mai mult la {alt}.", "Fă o impresie a lui {alt} când e supărat.", "Arată cum ai reacționa dacă {alt} ți-ar spune o glumă proastă."]}, "sociale": {"label": "Sociale", "desc": "Prietenoase, despre relații", "ic": "social", "c": "#34d399", "truth": ["Cine din cameră crezi că e cel mai bun prieten?", "Care e cea mai frumoasă amintire cu un prieten?", "Ce calitate apreciezi cel mai mult la oameni?", "Când ai ajutat ultima dată pe cineva fără să ți se ceară?", "Ce lucru mic îți face ziua mai bună?", "Cine e persoana care te cunoaște cel mai bine?", "Ce compliment ai primit și ți-a rămas în minte?", "Ce ai face dacă un prieten te-ar dezamăgi profund?", "Care e cel mai ciudat mod în care ai făcut un prieten?", "Ce secret despre altcineva îl știi și nu l-ai spus?", "Cine din grup te-ar suna la 3 noaptea dacă ar avea nevoie?", "Ce lucru la alții te enervează cel mai mult?", "Care e cea mai mare generozitate pe care ai văzut-o?", "Ce ai schimba la modul în care tratezi oamenii?", "Cine te-a iertat când nu o merita?", "Ce admiri la {alt}?", "Cine din grup seamănă cel mai mult cu tine?", "Dacă {alt} ar fi fratele/sora ta, cum ar arăta relația voastră?", "Ce compliment i-ai face lui {alt} pe care nu i l-ai spus niciodată?", "Cine din grup crezi că te-ar trăda pentru 1 milion de lei?", "Ce ai face dacă {alt} ar plânge în fața ta?", "Cine din cameră crezi că e cel mai sincer?", "Dacă {alt} ar avea nevoie de ajutor la 4 dimineața, ai răspunde?", "Ce lucru la {alt} te face să te simți bine?", "Cine din grup îți amintește de un vechi prieten?"], "dare": ["Fă un compliment sincer fiecărui jucător în parte.", "Dă telefonul unui prieten și spune-i că îi apreciezi prietenia.", "Ține mâna vecinului timp de 30 de secunde.", "Spune tuturor de ce îți place fiecare în parte.", "Trimite un mesaj cu inimioară primului contact din telefon.", "Imită cum saluți oamenii când te simți stânjenit.", "Fă o promisiune publică pe care o vei ține o săptămână.", "Privește în ochi pe {alt} timp de 15 secunde fără să zâmbești.", "Rostește un mulțumesc sincer lui {alt}.", "Mângâie pe umăr pe {alt} și spune-i ceva frumos.", "Arată cum faci cunoștință cu cineva nou.", "Spune un lucru bun despre {alt}.", "Fă-i lui {alt} o promisiune pe care o vei ține o săptămână.", "Dă-i lui {alt} un pupic pe obraz.", "Privește-l pe {alt} în ochi 20 secunde fără să vorbești.", "Spune-i lui {alt} ce îți place cel mai mult la el.", "Fă un toast pentru {alt} și ridică paharul.", "Mângâie părul lui {alt} timp de 10 secunde.", "Stai spate-n spate cu {alt} timp de 30 secunde.", "Ține mâna lui {alt} timp de 20 secunde."]}, "secrete": {"label": "Secrete", "desc": "Deep, răspunsuri serioase", "ic": "secret", "c": "#8b5cf6", "truth": ["Care e cel mai mare secret pe care nu l-ai spus nimănui?", "Ce regret ai care te mai bântuie?", "Când ai mințit ultima dată și de ce?", "Ce frică ai care nu o recunoști în fața altora?", "Ce lucru despre tine te jenează cel mai mult?", "Cine te-a rănit cel mai mult și cum ai iertat?", "Ce vis ai renunțat să-l mai urmărești?", "Ce moment din trecut ai da orice să-l schimbi?", "Ce parte din tine o ascunzi de ceilalți?", "Când ai plâns ultima dată singur?", "Ce crezi despre tine când te uiți în oglindă?", "Ce lucru ai face dacă știai că nu ești judecat?", "Cine ești cu adevărat când nimeni nu te vede?", "Ce iubire ai ascuns de toți?", "Ce dezamăgire ai față de tine?", "Ce lucru despre familia ta nu spui nimănui?", "Ce secret ți-e teamă să-l afle {alt}?", "Ce crezi că {alt} nu știe despre tine?", "Dacă {alt} ar citi gândurile tale timp de 1 minut, ce ar afla?", "Ce secret ai în care {alt} e implicat fără să știe?", "Când te-ai simțit cel mai singur?", "Ce minciună i-ai spus lui {alt} fără să-ți dai seama?", "Ce parte din tine ascunzi de {alt}?", "Dacă {alt} ar fi ultima persoană pe Pământ, ai fi sincer cu ea?", "Ce ai vrut să-i spui lui {alt} dar nu ai îndrăznit?"], "dare": ["Spune un lucru pe care nu l-ai spus niciodată cuiva din cameră.", "Arată o fotografie din telefon care înseamnă ceva pentru tine și explică de ce.", "Mărturisește ceva despre care crezi că nimeni nu știe.", "Spune cine din cameră te-ar înțelege cel mai bine pe tine.", "Adu aminte o amintire care te emoționează și povestește-o.", "Rostește un lucru pentru care ești recunoscător acum.", "Privește-l pe {alt} în ochi 10 secunde și spune ce simți.", "Spune-i lui {alt} un lucru pe care nu i l-ai spus niciodată.", "Arată-i lui {alt} o fotografie secretă din telefon.", "Mărturisește-i lui {alt} ceva despre tine pe care nu-l știe.", "Spune ce ai fi vrut să-i spui lui {alt} acum un an.", "Rostește un regret pe care îl ai legat de {alt}.", "Privește-l pe {alt} și spune ce vezi în ochii lui.", "Spune-i lui {alt} ce admiri la el în secret."]}, "ciudate": {"label": "Ciudate", "desc": "Confessions & Quirks", "ic": "weird", "c": "#f472b6", "truth": ["Care e cel mai ciudat lucru pe care îl faci când ești singur?", "Ce obicei ai care ar părea ciudat altora?", "Care e cel mai ciudat gând pe care l-ai avut?", "Ce lucru absurd crezi cu adevărat?", "Care e confesiunea ta cea mai ciudată?", "Ce fetish nevinovat ai?", "Care e cel mai ciudat lucru pe care l-ai căutat pe internet?", "Ce conversație ai cu tine însuți?", "Ce lucru ciudat ți-a rămas în memorie din copilărie?", "Ce comportament ai l-ai moștenit de la părinți?", "Care e cel mai ciudat lucru care te atrage la cineva?", "Ce obicei ai la care nimeni nu se așteaptă?", "Care e cel mai ciudat lucru pe care l-ai păstrat din trecut?", "Ce scenariu absurd ți-ai imaginat în cap de mai multe ori?", "Ce reacție ciudată ai la anumite lucruri?", "Care e cel mai ciudat lucru pe care îl faci când îl vezi pe {alt}?", "Ce obicei ciudat ai observat la {alt}?", "Dacă {alt} ar fi un obiect ciudat, ce ar fi?", "Care e cel mai ciudat lucru pe care îl știi despre {alt}?", "Ce ai făcut ciudat când ai fost singur cu {alt}?", "Ce mișcare ciudată faci fără să-ți dai seama?", "Dacă {alt} ar descrie cel mai ciudat lucru la tine, ce ar spune?", "Ce conversație ciudată ai avut cu {alt}?", "Care e cel mai ciudat gând pe care l-ai avut despre {alt}?", "Ce comportament ciudat ai când ești obosit?"], "dare": ["Arată ce mișcare ciudată faci când ești singur.", "Fă sunetul cel mai ciudat pe care îl poți face.", "Spune care e cel mai ciudat lucru din telefonul tău.", "Mai fă o dată cel mai ciudat lucru pe care l-ai făcut azi.", "Imită comportamentul tău ciudat când nimeni nu te vede.", "Arată o expresie facială ciudată pe care o faci des.", "Recunoaște un lucru ciudat pe care îl faci înainte de culcare.", "Fă cel mai ciudat dans pe care îl poți face 10 secunde.", "Spune cel mai ciudat vis pe care l-ai avut.", "Arată cum reacționezi ciudat la ceva de care îți e frică.", "Fă o confesiune ciudată despre un obicei alimentar.", "Demonstrează cum stai ciudat pe scaun când te uiți la telefon.", "Imită-l pe {alt} când face ceva ciudat.", "Fă o impresie a celui mai ciudat moment cu {alt}.", "Spune ce gând ciudat ai avut despre {alt}.", "Arată ce mișcare ciudată ai observat la {alt} și imit-o.", "Fă cel mai ciudat sunet pe care îl poți, apoi explică-l.", "Imită un obicei ciudat pe care crezi că îl are {alt}.", "Spune ce ai observat ciudat la {alt} și nu i-ai spus.", "Fă o față ciudată și lasă-l pe {alt} să o descrie."]}, "dileme": {"label": "Dileme Morale", "desc": "„Ce ai prefera?” & scenarii", "ic": "dilema", "c": "#22d3ee", "truth": ["Dacă ai fi obligat să alegi între a nu mai folosi niciodată internetul sau a nu mai mânca niciodată dulciuri, ce ai alege?", "Ai prefera să poți citi gândurile tuturor sau să fii invizibil?", "Dacă ai ști data exactă a morții tale, ai vrea să o afli?", "Ai salva 5 străini sau un membru al familiei de la moarte?", "Ai prefera să fii cel mai deștept din lume sau cel mai frumos?", "Dacă ai putea schimba un singur lucru din trecut, dar cu prețul unui lucru bun din prezent, ai face-o?", "Ai prefera să nu mai poți minți niciodată sau să nu mai poți tăcea niciodată?", "Dacă ai fi ultima persoană pe Pământ, ai vrea să continui?", "Ai prefera să ai toți banii din lume și să fii singur, sau să fii sărac dar înconjurat de oameni care te iubesc?", "Ai spune un secret care ar distruge o prietenie dacă asta ar salva viața cuiva?", "Dacă ai putea schimba un singur lucru despre lume, ce ar fi?", "Ai prefera să retrăiești o zi din trecut sau să vezi o zi din viitor?", "Dacă ar trebui să alegi între carieră și familie pentru totdeauna, ce ai alege?", "Ai minți pentru a proteja pe cineva iubit?", "Ai prefera să fii uitat de toți sau să fii amintit pentru ceva rău?", "Dacă ai ști că {alt} te trădează, l-ai confrunta sau ai aștepta?", "Ai prefera să renunți la gustul bun al mâncării sau la muzică?", "Dacă ai putea alege cum să mori, cum ai alege?", "Ai prefera să fii primul care moare sau ultimul?", "Dacă {alt} ar fi în pericol și tu ai putea salva-l doar sacrificându-te, ai face-o?", "Ai alege să fii bogat și singur, sau sărac și fericit cu {alt}?", "Dacă {alt} ar afla tot ce ai gândit despre el, relația voastră s-ar schimba?", "Ai minți lui {alt} pentru a-i proteja sentimentele?", "Dacă ai putea schimba un lucru la {alt}, ce ar fi?", "Ai prefera să nu-l mai vezi niciodată pe {alt} sau să-l vezi zilnic dar să nu-i vorbești?", "Dacă ai putea vedea doar în alb-negru de azi înainte, ai accepta?", "Ai prefera să trăiești 100 de ani fără {alt} sau 10 ani cu el?", "Dacă {alt} ar fi singura persoană care te poate salva, ai avea încredere?", "Ai spune un secret despre {alt} dacă ar salva pe altcineva?", "Dacă ai putea alege între a fi uitat de {alt} sau a-l uita pe {alt}, ce ai alege?"], "dare": ["Alege acum, în fața tuturor, un lucru la care ai spus „nu știu” și dă un răspuns clar.", "Comportă-te ca un majordom supus pentru următoarele 3 runde și ascultă de orice comandă inofensivă.", "Pentru următoarea rundă, poți răspunde doar cu „da” sau „nu” la orice.", "Alege-l pe {alt}: el pune o dilemă morală și tu trebuie să răspunzi fără ezitare.", "Dă un verdict într-o dilemă pe care o propune {alt}.", "Rămâi tăcut 30 de secunde în timp ce {alt} îți pune o dilemă, apoi răspunde.", "Alege-l pe {alt} care să îți dea o sarcină „pentru binele comun” pentru restul jocului.", "Pentru următoarea rundă, vorbește ca și cum ai fi în secolul 19.", "Transformă o dilemă morală într-un mini-spectacol de 20 de secunde.", "Propune tu o dilemă pentru {alt} și decide dacă răspunsul e sincer.", "Fă-i lui {alt} o dilemă morală și ascultă răspunsul fără să comentezi.", "Pentru 30 secunde, lasă-l pe {alt} să decidă tot ce faci.", "Dă-i lui {alt} dreptate indiferent ce spune timp de 1 minut.", "Răspunde la o dilemă pusă de {alt} în maxim 5 secunde.", "Transformă o dilemă a lui {alt} într-un mini-spectacol."]}};
+  var ADULT_BASE={"cuplu": {"label": "Cuplu", "desc": "Pentru doi parteneri", "ic": "heart", "c": "#ec4899", "truth": ["Care e cea mai intensă fantezie pe care nu ai spus-o partenerului tău?", "Ce moment intim cu partenerul tău ți-a plăcut cel mai mult?", "Ce ai vrea să încerci cu partenerul tău și nu ai îndrăznit să ceri?", "Ce parte a corpului tău te face să te simți cel mai sexy?", "Ce te atrage cel mai mult la partenerul tău?", "Când te-ai simțit cel mai dorit?", "Ce compliment intim ți-ar plăcea să auzi?", "Ce rol preferi: dominator sau supus?", "Ce lucru mic te aprinde instant?", "Unde e locul cel mai exotic în care ai vrea să fii cu partenerul tău?", "Dacă {alt} ar face parte dintr-o fantezie a ta, ce rol ar avea?", "Ce i-ai șopti lui {alt} într-o seară intimă?", "Ce parte a corpului lui {alt} te atrage cel mai mult?", "Dacă {alt} ar fi partenerul tău pentru o seară, ce i-ai cere?", "Ce te-ar face să te simți dorit de {alt}?", "Ce fantezie ai avut în care apare {alt}?", "Dacă {alt} ți-ar face un compliment intim, ce ai vrea să spună?", "Ce te atrage la modul în care {alt} se mișcă?", "Dacă {alt} ar dansa pentru tine, cum ar fi?", "Ce i-ai spune lui {alt} într-un moment intim?"], "dare": ["Sărută-ți partenerul pe gât timp de 10 secunde.", "Spune-i partenerului un lucru care te aprinde la el.", "Mângâie-i partenerului părul și privește-l în ochi 15 secunde.", "Șoptește-i partenerului ce vrei să îți facă mai târziu.", "Sărută-ți partenerul lent pe buze.", "Mângâie spatele partenerului timp de 20 secunde.", "Fă o promisiune intimă pentru diseară.", "Dans lent cu partenerul tău 30 de secunde.", "Spune-i partenerului trei lucruri care te atrag la el.", "Sărută-l pe ureche pe partenerul tău.", "Privește-l pe {alt} în ochi 15 secunde și zâmbește.", "Fă-i lui {alt} un compliment intim.", "Mângâie-i lui {alt} mâna timp de 15 secunde.", "Dansează lent cu {alt} 20 secunde.", "Șoptește-i lui {alt} ceva care te atrage la el.", "Sărută-l pe {alt} pe obraz lent.", "Mângâie-i lui {alt} părul 10 secunde.", "Privește-l pe {alt} și spune-i ce admiri la el.", "Fă-i lui {alt} o promisiune pentru mai târziu.", "Atinge-i lui {alt} ceafa ușor timp de 10 secunde."]}, "cupluri": {"label": "Cupluri", "desc": "Pentru mai multe cupluri", "ic": "social", "c": "#f472b6", "truth": ["Ce pereche din grup crezi că are cea mai bună chimie?", "Ce secret despre cuplul tău nu știe nimeni?", "Ce ai învățat de la alt cuplu din grup?", "Ce atrage la partenerul altcuiva?", "Ce moment intim îți amintești cu un zâmbet?", "Ce experiment ai vrea să încerci cu alt cuplu?", "Cine din grup ar fi cel mai bun partener de dans?", "Ce compliment ai face partenerului altcuiva?", "Ce pereche din grup te invidiază cel mai puțin?", "Ce ai face dacă partenerul tău ar flirta cu {alt}?", "Dacă {alt} ar flirta cu partenerul tău, cum ai reacționa?", "Ce te atrage la dinamica lui {alt} cu partenerul lui?", "Ce ai învățat despre relații de la {alt}?", "Dacă {alt} ar fi într-un cuplu cu tine, cum ar arăta?", "Ce secret despre {alt} crezi că nu știe nimeni?"], "dare": ["Schimbă locurile cu alt cuplu pentru următoarea rundă.", "Fă un compliment sincer partenerului altui cuplu.", "Dans cu un partener din alt cuplu 20 secunde.", "Spune ce admiră la cuplul de lângă voi.", "Mângâie mâna partenerului altui jucător timp de 10 secunde.", "Sărută partenerul de mână în fața tuturor.", "Rostește o promisiune pentru cuplul tău în fața grupului.", "Privește un jucător din alt cuplu în ochi 10 secunde.", "Fă-i un compliment lui {alt} despre dinamica lui de cuplu.", "Dansează 15 secunde cu {alt} în fața partenerilor.", "Mângâie-i lui {alt} mâna și spune ceva frumos.", "Sărută-l pe {alt} pe obraz în fața grupului.", "Privește-l pe {alt} 15 secunde și zâmbește.", "Fă-i lui {alt} un compliment despre cum arată.", "Spune ce admiri la partenerul lui {alt}."]}, "swingers": {"label": "Swingers", "desc": "Schimb de parteneri · 150 provocări", "ic": "fire", "c": "#f59e0b", "dareOnly": true, "truth": [], "dare": []}, "cuck": {"label": "Cuck", "desc": "Umilire light · 150+150", "ic": "warn", "c": "#fb7185", "truth": [], "dare": []}, "bdsm_light": {"label": "BDSM Light", "desc": "Dominare ușoară, senzații", "ic": "lock2", "c": "#a78bfa", "truth": ["Preferi să domini sau să fii dominat?", "Ce senzație fizică îți place cel mai mult?", "Ce limită clară ai în jocurile de dominare?", "Ce cuvânt de siguranță ai alege?", "Ce scenariu de dominare te atrage?", "Ce rol te face să te simți cel mai bine?", "Ce accesoriu ți-ai dori să încerci?", "Ce formă de supunere ți se pare atrăgătoare?", "Dacă {alt} ar fi stăpânul tău pentru o seară, ce i-ai cere?", "Ce comandă i-ai da lui {alt} dacă tu ai fi stăpân?", "Ce senzație vrei să o simți de la {alt}?", "Dacă {alt} te-ar domina ușor, cum ar arăta?", "Ce limită ai cu {alt}?", "Ce rol preferi în raport cu {alt}?", "Ce accesoriu ai folosi cu {alt}?"], "dare": ["Fă o comandă clară unui alt jucător (inofensivă) și el trebuie să o execute.", "Legați-vă la ochi cu o eșarfă și ghiciți cine vă atinge mâna.", "Pentru următoarea rundă, folosește doar cuvântul „Da”.", "Alege pe cineva care să îți dea o comandă pe care o execuți.", "Rămâi nemișcat 30 secunde în timp ce altcineva îți dă indicații.", "Stai în genunchi 15 secunde în fața partenerului ales de tine.", "Atinge ușor cu vârful degetelor brațul altui jucător timp de 20 secunde.", "Fii „stăpânul” pentru următoarele 2 runde: decide cine face ce.", "Spune-i lui {alt} ce să facă în următoarea tură.", "Privește în jos și spune „Cum doriți” de 3 ori.", "Fă-i o comandă lui {alt} și el trebuie să o execute.", "Stai în genunchi 15 secunde în fața lui {alt}.", "Atinge-i lui {alt} brațul ușor timp de 15 secunde.", "Rămâi nemișcat în timp ce {alt} îți dă o comandă.", "Legați-vă la ochi și ghiciți ce vă atinge {alt}."]}, "touch_body": {"label": "Touch the Body", "desc": "Atingeri, senzații tactile", "ic": "heart", "c": "#f472b6", "truth": ["Ce parte a corpului tău îți place să fie atinsă?", "Ce atingere te face să te relaxezi instant?", "Ce zonă a corpului tău este cea mai sensibilă?", "Ce tip de atingere îți displace?", "Ce senzație tactilă ți-a rămas în memorie?", "Ce mângâiere te face să închizi ochii?", "Ce reacție ai la o atingere neașteptată?", "Ce ai vrea să îți spună cineva în timp ce te atinge?", "Ce parte a corpului altcuiva te atrage cel mai mult să atingi?", "Unde îți place să fii atins într-un mod non-sexual dar intim?", "Dacă {alt} te-ar atinge pe ceafă, cum ai reacționa?", "Ce zonă a corpului lui {alt} te atrage cel mai mult?", "Ce atingere de la {alt} ți-ar plăcea să simți?", "Unde ai atinge pe {alt} dacă ai putea?", "Ce mângâiere ai face lui {alt}?"], "dare": ["Atinge ușor ceafa unui jucător ales de tine timp de 15 secunde.", "Mângâie părul altui jucător 20 secunde.", "Atinge spatele unui jucător cu vârful degetelor 15 secunde.", "Masează ușor umerii partenerului de lângă tine.", "Atinge obrazul unui jucător și privește-l 10 secunde.", "Mângâie mâna altui jucător timp de 20 secunde.", "Atinge ușor antebrațul unui jucător ales de tine.", "Fă o mângâiere lentă pe brațul unui jucător de la încheietură la umăr.", "Pune palma pe spatele unui jucător și menține-o 15 secunde.", "Atinge ușor tâmpla unui jucător și privește-l în ochi.", "Atinge-i lui {alt} ceafa ușor 15 secunde.", "Mângâie-i părul lui {alt} 20 secunde.", "Atinge-i lui {alt} spatele cu vârful degetelor 15 secunde.", "Masează-i umerii lui {alt} ușor.", "Atinge-l pe {alt} pe obraz și privește-l 10 secunde.", "Mângâie-i mâna lui {alt} 20 secunde.", "Fă o mângâiere lentă pe brațul lui {alt}.", "Pune palma pe spatele lui {alt} 15 secunde.", "Atinge-i lui {alt} tâmpla și privește-l în ochi.", "Mângâie-i lui {alt} antebrațul ușor 15 secunde."]}, "sexual_fantasy": {"label": "Fantezii Sexuale", "desc": "Versiune preview — update 0.0.3", "ic": "fire", "c": "#ef4444", "comingSoon": true, "truth": ["Care e fantezia ta sexuală pe care nu ai spus-o nimănui?", "Ce scenariu fantezie ai reveni de mai multe ori în minte?", "Ce loc exotic îți apare în fantezii?", "Ce rol ai în fantezia ta preferată?", "Ce detaliu mic face o fantezie perfectă?"], "dare": ["Descrie pe scurt o fantezie nevinovată în care ai fi personajul principal.", "Spune ce element dintr-o fantezie te atrage cel mai mult.", "Alege un jucător: descrie-i o scenă de fantezie light.", "Spune ce te atrage la un jucător în fantezie.", "Rostește o promisiune de fantezie pentru diseară."]}};
+  ADULT_BASE.swingers.dare=["{eu}, sărută-l pasional pe {part_alt} pe buze, cu limbă, timp de 15 secunde în timp ce {part} privește.", "{eu}, sărută-i gâtul lui {part_alt} timp de 20 de secunde, lent, cu buzele umede.", "{eu}, sărută-l pe {part_alt} cu limbă timp de 30 de secunde — fără să te oprești.", "{eu}, mușcă-i lobul urechii lui {part_alt} și șoptește-i o fantezie sexuală în aceeași ureche.", "{eu}, sărută-i clavicula lui {part_alt} timp de 15 secunde în timp ce {part} ține mâna lui {alt}.", "{eu}, sărută-l pe {part_alt} pe gură fără să folosești mâinile timp de 20 de secunde.", "{eu}, linge-i gâtul lui {part_alt} de la claviculă până la bărbătie timp de 15 secunde.", "{eu}, sărută pasional buzele lui {part_alt} în timp ce {part} te sărută pe ceafă.", "{eu}, mușcă-i buza inferioară a lui {part_alt} și trage de ea ușor, timp de 10 secunde.", "{eu}, sărută-l pe {part_alt} pe gură cu ochii deschiși, privindu-l fix tot timpul.", "{eu}, sărută-i tâmpla lui {part_alt} și coboară lent spre gură — oprește-te fix înainte de buze, 15 secunde.", "{eu}, sărută-l pe {part_alt} pe gură cu limbă timp de 45 de secunde — hardcore, fără pauză.", "{eu}, sărută-i umerii goi ai lui {part_alt} și mușcă-i ușor timp de 20 de secunde.", "{eu}, mângâie-i coapsa interioară a lui {part_alt} timp de 15 secunde, lent, în timp ce {part} privește.", "{eu}, mângâie spatele lui {part_alt} sub cămașă timp de 20 de secunde.", "{eu}, mângâie-i ceafa lui {part_alt} cu vârful degetelor, coborând spre claviculă, 20 de secunde.", "{eu}, freacă-i coapsa lui {part_alt} în timp ce îi săruți gâtul, timp de 20 de secunde.", "{eu}, pune-ți mâna pe pieptul lui {part_alt} peste haine și simte-i bătăile inimii timp de 15 secunde.", "{eu}, apucă-i șoldurile lui {part_alt} cu ambele mâini și trage-l spre tine timp de 15 secunde.", "{eu}, pune-ți mâna pe coapsa lui {part_alt} și maseaz-o timp de 20 de secunde în timp ce {part} vorbește cu {alt}.", "{eu}, stai în poala lui {part_alt} cu fața la el timp de 30 de secunde, fără să te miști.", "{eu}, stai în poala lui {part_alt} și freacă-te lent pe el timp de 20 de secunde.", "{eu}, stai în poala lui {part_alt} cu spatele la el și lasă-l să te sărute pe ceafă timp de 20 de secunde.", "{eu}, așază-te în poala lui {part_alt} și mișcă-ți șoldurile lent timp de 30 de secunde.", "{eu}, stai călare pe {part_alt} în timp ce {part} bea un shot uitându-se la voi.", "{eu}, stai în poala lui {part_alt} și sărută-l pasional timp de 30 de secunde în timp ce te freci pe el.", "{eu}, stai în poala lui {part_alt} și lasă-l să-ți mângâie coapsele timp de 20 de secunde.", "{eu}, stai în poala lui {part_alt} și învârte-ți șoldurile încet timp de 30 de secunde — hardcore.", "{eu}, scoate-ți cămașa și las-o pe {part_alt} să-ți mângâie umerii timp de 20 de secunde.", "{eu}, scoate-ți șosetele cu mâna lui {part_alt} pe coapsa ta.", "{eu}, descheie-i două nasturi lui {part_alt} și sărută-i pielea expusă timp de 15 secunde.", "{eu}, lasă-l pe {part_alt} să-ți scoată haina în timp ce {part} privește.", "{eu}, ridică-ți cămașa și lasă-l pe {part_alt} să-ți sărute burta timp de 15 secunde.", "{eu}, descheie-i cămașa lui {part_alt} și mângâie-i pieptul gol timp de 20 de secunde.", "{eu}, lasă-l pe {part_alt} să-ți scoată cureaua — lent, doar cu mâinile lui.", "{eu}, linge sare de pe gâtul lui {part_alt} apoi bea un shot de pe pieptul lui.", "{eu}, bea un shot de pe burta lui {part_alt} în timp ce {part} ține paharul.", "{eu}, pune sare pe clavicula lui {part_alt} și linge-o lent în timp ce îl privești în ochi.", "{eu}, linge tequila de pe degetele lui {part_alt} unul câte unul.", "{eu}, bea un shot de pe coapsa lui {part_alt} în timp ce el/ea stă întins(ă) pe canapea.", "{eu}, pune-ți o picătură de alcool pe gât și lasă-l pe {part_alt} să o lingă.", "{eu}, toarnă un shot pe pieptul gol al lui {part_alt} și bea-l direct de acolo.", "{eu}, mușcă o felie de lămâie de pe buzele lui {part_alt} în timp ce el te ține de ceafă.", "{eu}, șoptește-i lui {part_alt} cea mai intimă fantezie sexuală timp de 30 de secunde.", "{eu}, șoptește-i lui {part_alt} ce vrei să-i faci diseară, cu vocea joasă și buzele pe urechea lui.", "{eu}, spune-i lui {part_alt} în șoaptă unde vrei să fii atins(ă) în acest moment, în detaliu.", "{eu}, șoptește-i lui {part_alt} un lucru pe care nu i-ai spune niciodată lui {part}.", "{eu}, descrie-i lui {part_alt} în șoaptă cum ar arăta o noapte întreagă cu el/ea.", "{eu}, șoptește-i lui {part_alt} „vreau să…” și completează propoziția — în fața lui {part}.", "{eu}, spune-i lui {part_alt} în șoaptă ce parte a corpului lui te excită cel mai mult.", "{eu}, șoptește-i lui {part_alt} o fantezie în timp ce {part} ascultă fără să comenteze.", "{eu}, șoptește-i lui {part_alt} un lucru pe care vrei să-l faci cu {alt} și cu el/ea în același timp.", "{eu}, privește-l pe {part_alt} în ochi timp de 30 de secunde fără să clipești — primul care clipește pierde.", "{eu}, privește-l pe {part_alt} în ochi în timp ce {part} te sărută pe ceafă timp de 20 de secunde.", "{eu}, mângâie coapsa lui {part_alt} în timp ce îl privești fix în ochi — fără să vorbești, 20 de secunde.", "{eu}, pune-ți mâna pe pieptul lui {part_alt} și numără-i bătăile inimii în timp ce îl privești.", "{eu}, apropie-ți fața de a lui {part_alt} la 2 cm fără să-l săruți timp de 15 secunde.", "{eu}, sărută-l pe {part_alt} pasional cu limbă timp de 60 de secunde în timp ce te freci pe el.", "{eu}, stai în poala lui {part_alt} și freacă-te pe el în timp ce {part} sărută pe {alt}.", "{eu}, scoate-ți cămașa și lasă-l pe {part_alt} să-ți sărute pieptul timp de 30 de secunde.", "{eu}, mângâie-i interiorul coapsei lui {part_alt} urcând lent timp de 20 de secunde.", "{eu}, stai în poala lui {part_alt} și lasă-l să-ți mângâie pieptul peste haine timp de 30 de secunde.", "{eu}, stai călare pe {part_alt} și sărută-i gâtul în timp ce {part} te mângâie pe spate.", "{eu}, freacă-te de {part_alt} timp de 30 de secunde în timp ce {alt} numără cu voce tare.", "{eu}, lasă-l pe {part_alt} să-ți tragă fermoarul jos cu dinții.", "{eu}, stai în poala lui {part_alt} și freacă-te în ritm cu muzica timp de 30 de secunde.", "{eu}, mângâie-i coapsele lui {part_alt} și urcă spre șolduri — nu te opri timp de 20 de secunde.", "{eu}, sărută-i burta lui {part_alt} și coboară lent spre curea timp de 20 de secunde.", "{eu}, stai pe genunchi în fața lui {part_alt} timp de 15 secunde privindu-l în ochi.", "{eu}, mușcă-i umerii lui {part_alt} și linge urmele lăsate timp de 20 de secunde.", "{eu}, stai în poala lui {part_alt} cu fața la el și lasă-l să-ți descheie un nasture.", "{eu}, freacă-ți buzele de colțul gurii lui {part_alt} fără să-l săruți timp de 15 secunde.", "{eu}, apucă-l pe {part_alt} de ceafă și trage-i capul pe spate, apoi sărută-i gâtul timp de 15 secunde.", "{eu}, linge-i clavicula lui {part_alt} în timp ce îl privești în ochi, 15 secunde.", "{eu}, stai în spatele lui {part_alt} și mângâie-i pieptul în timp ce îi săruți ceafa timp de 20 de secunde.", "{eu}, prinde-i mâinile lui {part_alt} și pune-le pe șoldurile tale timp de 15 secunde.", "{eu}, așază-te cu spatele la {part_alt} și freacă-te de el timp de 20 de secunde.", "{eu}, linge-i lobul urechii lui {part_alt} în timp ce îi mângâi coapsa timp de 15 secunde.", "{eu}, mușcă-i umărul lui {part_alt} prin cămașă și linge urma umedă timp de 15 secunde.", "{eu}, descheie-i toți nasturii lui {part_alt} unul câte unul, privindu-l în ochi.", "{eu}, sug-i un deget lui {part_alt} timp de 15 secunde în timp ce {part} privește.", "{eu}, dansează lent cu {part_alt} în timp ce {part} dansează cu {alt}, 60 de secunde, foarte aproape.", "{eu}, dansează cu {part_alt} lipit(ă) de el/ea, șold la șold, timp de 60 de secunde.", "{eu}, lasă-l pe {part_alt} să te țină de șolduri și dansează cu spatele la el timp de 30 de secunde.", "{eu}, dansează cu {part_alt} în timp ce îi șoptești o fantezie la ureche.", "{eu}, freacă-te de {part_alt} în timp ce dansează — 30 de secunde, fără oprire.", "{eu}, stai între {part_alt} și {alt} și lasă-i să te mângâie pe brațe în același timp timp de 20 de secunde.", "{eu}, sărută-l pe {part_alt} în timp ce {alt} te mângâie pe spate timp de 20 de secunde.", "{eu}, stai în poala lui {part_alt} și lasă-l pe {alt} să-ți țină mâna timp de 15 secunde.", "{eu}, linge sare de pe gâtul lui {part_alt} în timp ce {alt} toarnă shotul.", "{eu}, sărută-l pe {part_alt} în timp ce {part} sărută pe {alt} — 30 de secunde, în paralel.", "{eu}, sărută-l pe {opus} pe gură timp de 20 de secunde în timp ce {part} numără cu voce tare.", "{eu}, stai în poala lui {opus} și mângâie-i ceafa timp de 15 secunde.", "{eu}, mângâie-i coapsa lui {opus} timp de 20 de secunde în timp ce {part_alt} privește.", "{eu}, șoptește-i lui {opus} o fantezie timp de 30 de secunde cu buzele pe urechea lui.", "{eu}, linge sare de pe gâtul lui {opus} în timp ce {alt} bea shotul.", "{eu}, dansează cu {opus} timp de 60 de secunde, foarte aproape, cu mâinile pe șoldurile lui.", "{eu}, mângâie-i spatele lui {opus} sub cămașă timp de 20 de secunde.", "{eu}, sărută-l pe {opus} pe gât timp de 15 secunde fără să folosești mâinile.", "{eu}, stai călare pe {opus} timp de 30 de secunde fără să te miști, privindu-l în ochi.", "{eu}, ține contactul vizual cu {opus} timp de 30 de secunde în timp ce {alt} te mângâie pe umăr.", "{eu}, stai în poala lui {part_alt} în timp ce îi spui lui {part} cât de bine te simți timp de 20 de secunde.", "{eu}, sărută-l pe {part_alt} în timp ce {part} face același lucru cu {alt} — 45 de secunde.", "{eu}, mângâie-i pieptul gol al lui {part_alt} timp de 20 de secunde în timp ce îl săruți pe gât.", "{eu}, stai între {part_alt} și {alt}, cu câte o mână pe coapsa fiecăruia — 20 de secunde.", "{eu}, lasă-l pe {part_alt} să-ți mângâie spatele sub haine timp de 30 de secunde.", "{eu}, sărută-l pasional pe {part_alt} timp de 30 de secunde apoi mușcă-i buza.", "{eu}, descheie-i un nasture lui {part_alt} și linge-i pielea descoperită timp de 15 secunde.", "{eu}, freacă-te de coapsa lui {part_alt} timp de 20 de secunde fără să-l săruți.", "{eu}, șoptește-i lui {part_alt} „mi-e cald” și lasă-l să te dezbrace de un strat.", "{eu}, stai în poala lui {part_alt} cu spatele și lasă-l să-ți mângâie coapsele timp de 30 de secunde.", "{eu}, sărută-i gâtul lui {part_alt} timp de 20 de secunde în timp ce {alt} te ține de mână.", "{eu}, linge-i clavicula lui {part_alt} și suflă-i pe pielea umedă timp de 15 secunde.", "{eu}, mângâie-i fața lui {part_alt} cu vârful degetelor timp de 15 secunde privindu-l în ochi.", "{eu}, sărută-l pe {part_alt} pe buze, apoi pe gât, apoi pe claviculă — fără pauză.", "{eu}, stai în poala lui {part_alt} și lasă-l să-ți desfacă părul sau curea timp de 20 de secunde.", "{eu}, mângâie-i spatele inferior al lui {part_alt} și trage-l spre tine timp de 20 de secunde.", "{eu}, șoptește-i lui {part_alt} un lucru despre care nu vrei să știe {part} — 30 de secunde.", "{eu}, sărută-l pe {part_alt} cu ochii deschiși timp de 20 de secunde în timp ce {alt} numără.", "{eu}, stai în fața lui {part_alt}, la 1 cm distanță, și respiră-i pe față timp de 15 secunde.", "{eu}, linge-i gâtul lui {part_alt} și spune-i „ce bun(ă) ești” în șoaptă.", "{eu}, mângâie-i coapsa interioară a lui {part_alt} urcând lent timp de 30 de secunde — hardcore.", "{eu}, stai în poala lui {part_alt} și lasă-l să-ți mângâie pieptul timp de 30 de secunde.", "{eu}, sărută-l pe {part_alt} cu limbă timp de 45 de secunde în timp ce {part} privește și numără.", "{eu}, freacă-te de {part_alt} timp de 30 de secunde fără să-l săruți — hardcore.", "{eu}, descheie-i cămașa lui {part_alt} complet și sărută-i pieptul timp de 30 de secunde.", "{eu}, lasă-l pe {part_alt} să te țină de ceafă și sărută-l cu limbă timp de 30 de secunde.", "{eu}, mângâie-i coapsele lui {part_alt} cu ambele mâini urcând spre șolduri timp de 25 de secunde.", "{eu}, stai călare pe {part_alt} și sărută-i gâtul în timp ce te freci pe el — 30 de secunde.", "{eu}, scoate-ți o piesă de haine și lasă-l pe {part_alt} să-ți mângâie pielea goală timp de 30 de secunde.", "{eu}, stai în poala lui {part_alt}, sărută-l pasional cu limbă și lasă-l să-ți mângâie spatele sub haine timp de 45 de secunde — hardcore final.", "{eu}, mușcă-i lobul urechii lui {part_alt} și freacă-te de coapsa lui timp de 20 de secunde.", "{eu}, apasă-l pe {part_alt} pe canapea și stai deasupra lui timp de 20 de secunde fără să-l săruți.", "{eu}, mângâie-i fața lui {part_alt} cu o mână și ceafa cu cealaltă, timp de 20 de secunde privindu-l.", "{eu}, linge-i linia maxilarului lui {part_alt} de la bărbătie la ureche, lent, 15 secunde.", "{eu}, trage-l pe {part_alt} de curea spre tine și sărută-l pe gură timp de 15 secunde.", "{eu}, stai în poala lui {part_alt} și lasă-l să-și plimbe mâinile pe coapsele tale timp de 30 de secunde.", "{eu}, mușcă-i umărul gol al lui {part_alt} și suge-i pielea timp de 15 secunde, lăsând o urmă.", "{eu}, șoptește-i lui {part_alt} „te vreau acum” și apoi sărută-l pe gât timp de 15 secunde.", "{eu}, descheie-i un nasture lui {part_alt} cu dinții, apoi sărută-i pielea descoperită.", "{eu}, stai în spatele lui {part_alt}, îmbrățișându-l, și mângâie-i pieptul sub cămașă timp de 25 de secunde.", "{eu}, freacă-ți buzele pe gâtul lui {part_alt} fără să săruți, timp de 20 de secunde, privindu-l pe {part}.", "{eu}, apucă-l pe {part_alt} de șolduri și trage-l spre tine în timp ce îl săruți pasional timp de 20 de secunde.", "{eu}, stai călare pe {part_alt} și lasă-l să-ți descheie un nasture în timp ce îl săruți pe gât timp de 20 de secunde.", "{eu}, mângâie-i spatele lui {part_alt} cu unghiile, lent, din ceafă până la curea, 20 de secunde.", "{eu}, sărută-l pe {part_alt} pe buze în timp ce îi descheie un nasture, 20 de secunde, hardcore.", "{eu}, linge-i pielea descoperită a lui {part_alt} de la gât spre claviculă în timp ce {alt} numără până la 15.", "{eu}, stai în poala lui {part_alt} și lasă-l să-ți sărute gâtul timp de 30 de secunde în timp ce {part} bea un shot.", "{eu}, freacă-te de {part_alt} spate-în-spată timp de 20 de secunde în timp ce el/ea te ține de șolduri.", "{eu}, mușcă-i clavicula lui {part_alt} și linge apoi urma timp de 15 secunde privindu-l în ochi."];
+  ADULT_BASE.cuck.truth=["{eu}, cum ai simți dacă {part} ar geme de plăcere cu {alt} chiar acum?", "{eu}, ce ai face dacă ai auzi-o pe {part} strigând numele lui {alt} în pat?", "{eu}, ai prefera să privești {part} făcându-se cu {alt} sau să nu afli niciodată?", "{eu}, ce simți când îți imaginezi buzele lui {part} pe ale lui {alt}?", "{eu}, ai putea să stai liniștit privind {part} goală în poala lui {alt}?", "{eu}, cum ți se pare ideea ca {part} să-i mângâie lui {alt} coapsa în timp ce tu privești din colț?", "{eu}, te excită ideea ca {part} să geamă mai tare cu {alt} decât cu tine?", "{eu}, dacă {part} i-ar face o labă lui {alt}, ai privi sau ai pleca din cameră?", "{eu}, ce îți dorești cel mai mult să vezi când {part} este cu {alt}?", "{eu}, cum ai reacționa dacă {part} s-ar uita la tine în timp ce {alt} o sărută pe gât?", "{eu}, te excită să te gândești la {part} muindu-se pentru {alt}?", "{eu}, ce ai simți dacă {part} ar cere să o facă cu {alt} chiar acum?", "{eu}, ai putea să-ți vezi {part} în pat cu {alt} și să rămâi cu erecție?", "{eu}, ce ai face dacă {part} ar spune că {alt} o satisface mai bine decât tine?", "{eu}, te-ar excita sau te-ar distruge să vezi {part} terminând cu {alt}?", "{eu}, cum ai descrie senzația de a o privi pe {part} dorindu-l pe {alt}?", "{eu}, ai putea să-i spui sincer lui {part} că vrei să o vezi cu {alt}?", "{eu}, ce-ți dorești să facă {part} prima dată când {alt} o atinge?", "{eu}, te-ar excita să-i auzi pe {part} și {alt} în dormitor cu ușa închisă?", "{eu}, ce îți trece prin cap când îți imaginezi {part} dezbrăcată pentru {alt}?", "{eu}, ai prefera să fii legat și obligat să privești, sau să pleci din cameră?", "{eu}, te-ar excita ca {part} să-ți spună în timp ce o face cu {alt} cât de bine se simte?", "{eu}, cum ai descrie senzația de a vedea {part} cu gura pe {alt}?", "{eu}, ai putea să le servești băuturi lui {part} și {alt} în timp ce se ating?", "{eu}, te-ar excita să vezi {part} umezindu-se doar privindu-l pe {alt}?", "{eu}, crezi că {alt} o să facă {part} mai excitată decât tine?", "{eu}, ce crezi că are {alt} și tu nu ai, ca să o excite pe {part}?", "{eu}, când ai simțit ultima dată că nu ești suficient pentru {part}?", "{eu}, te-ai compara cu {alt} dacă l-ai vedea gol cu {part}?", "{eu}, ce-ai face dacă {part} ar spune că dimensiunea lui {alt} o satisface mai bine?", "{eu}, ai accepta în fața grupului că {alt} e mai bun în pat decât tine?", "{eu}, ce crezi că-i lipsește lui {part} când este doar cu tine în pat?", "{eu}, te temi că {part} se plictisește cu tine în pat?", "{eu}, ce-ai face dacă {part} ar râde de performanța ta comparat cu {alt}?", "{eu}, ai putea să-i spui lui {alt} că {part} merită mai mult decât îi oferi tu?", "{eu}, cum te simți când {part} vorbește despre ceva ce i-a plăcut la altcineva?", "{eu}, te temi că {part} se gândește la {alt} când face dragoste cu tine?", "{eu}, ce părere ai dacă {part} îți spune că {alt} o face să se simte mai femeie?", "{eu}, ai accepta în fața ei că {alt} e mai dotat decât tine?", "{eu}, cum te simți când știi că {part} a avut parteneri mai buni decât tine?", "{eu}, te-ar ajuta sau te-ar distruge să afli că {part} a simulat cu tine?", "{eu}, ce-ai face dacă {part} ar cere ca {alt} să o satisfacă pentru că tu nu poți?", "{eu}, ai putea să-i mulțumești lui {alt} că o satisface pe {part} unde tu eșuezi?", "{eu}, ce crezi că face {alt} în pat mai bine decât tine?", "{eu}, te-ai simți mai puțin bărbat dacă {part} l-ar prefera pe {alt}?", "{eu}, ai accepta să fii al doilea după {alt} în pat pentru {part}?", "{eu}, cum ai reacționa dacă {part} ar spune că tu o iubești, dar {alt} o satisface?", "{eu}, ce-ai face dacă {part} te-ar compara direct cu {alt} în pat?", "{eu}, te temi că {alt} îi va da lui {part} ce tu nu i-ai dat niciodată?", "{eu}, cum te simți când îți dai seama că {part} ar putea alege plăcerea cu {alt} peste iubirea cu tine?", "{eu}, te excită sau te enervează când {part} îl atinge pe {alt}?", "{eu}, ce simți mai tare: gelozia sau erecția, când {part} flirta cu {alt}?", "{eu}, te-ar excita să fii gelos pe {alt} sau te-ar enerva?", "{eu}, cum îți explici că gelozia îți provoacă și excitare?", "{eu}, ce faci când vrei să fii în locul lui {alt} dar totuși vrei să privești?", "{eu}, te-ar excita să o vezi pe {part} infidelă cu {alt} sau te-ar distruge?", "{eu}, cum îți controlezi erecția când {part} îl atinge pe {alt}?", "{eu}, te excită să te gândești că {part} te înșală cu {alt} chiar acum?", "{eu}, ce-ai face dacă gelozia și excitarea te-ar paraliza privindu-i pe {part} și {alt}?", "{eu}, ai prefera să fii gelos și excitat, sau complet indiferent?", "{eu}, te excită să-i spui lui {part} că te doare când e cu {alt}?", "{eu}, cum îți explici că suferința de a privi te face să vrei mai mult?", "{eu}, te-ar excita ca {part} să-ți spună că te înșală cu {alt} doar ca să te excit?", "{eu}, ce-ai face dacă {part} te-ar forța să fii gelos ca să-ți facă plăcere?", "{eu}, te excită masochismul de a o privi pe {part} cu {alt} sau te deranjează?", "{eu}, ai putea să-i spui lui {part} că dorința de a o privi cu {alt} te face să o și urăști, și să o și iubești?", "{eu}, ce-ai face dacă {part} ar spune că gelozia ta îi face plăcere?", "{eu}, te-ar excita ca {part} să te facă gelos intenționat cu {alt}?", "{eu}, cum te simți când gelozia și excitarea se amestecă privindu-i pe {part} și {alt}?", "{eu}, ai prefera să fii orbit de gelozie sau să vezi totul clar când {part} e cu {alt}?", "{eu}, te excită să-ți imaginezi {part} spunându-ți cât de bine se simte cu {alt}?", "{eu}, cum îți controlezi plăcerea amestecată cu durere când {part} e cu {alt}?", "{eu}, te-ar excita ca {part} să te facă să plângi de gelozie și să fii excitat în același timp?", "{eu}, ce-ai face dacă {part} te-ar obliga să recunoști că suferința te excită?", "{eu}, te excită să te gândești că {part} se bucură de plăcerea de a te face gelos cu {alt}?", "{eu}, ce parte a corpului lui {alt} crezi că o excită pe {part} cel mai mult?", "{eu}, ce crezi că atrage cel mai mult la {alt} în ochii lui {part}?", "{eu}, ai observat cum privește {part} anumite părți ale lui {alt}?", "{eu}, ce crezi că visează {part} când se gândește la {alt}?", "{eu}, ai surprins-o pe {part} privindu-l pe {alt} cu dorință?", "{eu}, cum crezi că se uită {part} la {alt} când nu ești atent?", "{eu}, ce gest al lui {alt} crezi că o face pe {part} să se aprindă?", "{eu}, ai observat dacă {part} se apropie fizic de {alt} fără să-și dea seama?", "{eu}, ce crezi că-i trece prin cap lui {part} când {alt} îi vorbește?", "{eu}, te-ai simți mai bine sau mai rău dacă {part} ți-ar spune deschis că-l dorește pe {alt}?", "{eu}, ce părere ai dacă {part} ar recunoaște că se masturbează gândindu-se la {alt}?", "{eu}, ai prefera să afli că {part} te minte sau că recunoaște că-l dorește pe {alt}?", "{eu}, cum ai descrie privirea lui {part} când {alt} intră în cameră?", "{eu}, te-ai simți confirmat dacă {part} ar spune că-i place de {alt}?", "{eu}, ce-i promiți lui {part} ca să-i permiți să-și exprime dorința pentru {alt}?", "{eu}, ai putea să-i spui lui {part} că vezi că-l dorește pe {alt}?", "{eu}, ce-ai face dacă {part} ar recunoaște că s-a gândit la {alt} în timp ce făceați dragoste?", "{eu}, te-ar mira dacă {part} ar avea poze cu {alt} ascunse?", "{eu}, cum te-ai simți dacă {part} ar visa spunând numele lui {alt}?", "{eu}, ai putea să o întrebi pe {part} direct dacă vrea să se culce cu {alt}?", "{eu}, ce răspuns te temi să-l auzi de la {part} despre {alt}?", "{eu}, te-ar excita să-i auzi răspunsul sincer al lui {part} despre atracția pentru {alt}?", "{eu}, cum ai descrie o seară în care {part} ar recunoaște dorința pentru {alt}?", "{eu}, ai putea să-i ceri lui {part} să-ți spună ce i-ar face lui {alt} în pat?", "{eu}, te-ar excita sau te-ar distruge să afli adevărul despre {part} și {alt}?", "{eu}, dacă {part} ți-ar spune acum că vrea să se culce cu {alt}, ce ai zice?", "{eu}, ce-ai face dacă {part} te-ar chema să privești cum o face cu {alt} chiar acum?", "{eu}, dacă {part} ar cere să petreacă noaptea cu {alt}, ai accepta?", "{eu}, ce-ai face dacă {alt} ar cere permisiunea să o dezbrace pe {part} în fața ta?", "{eu}, dacă {part} ar fi legată și {alt} ar întreba dacă poate să o atingă, ce-ai zice?", "{eu}, ce-ai face dacă {part} te-ar obliga să filmezi cum o face cu {alt}?", "{eu}, dacă {part} ar rămânea gravidă cu {alt}, ai crește copilul?", "{eu}, ce-ai face dacă {part} ar cere ca {alt} să fie primul în noaptea asta?", "{eu}, dacă {part} te-ar lega și te-ar obliga să privești, ai rezista?", "{eu}, ce-ai face dacă {part} ar cere ca {alt} să doarmă în patul vostru?", "{eu}, dacă {part} ar spune că vrea ca {alt} să o satisfacă în fiecare săptămână, ai accepta?", "{eu}, ce-ai face dacă {part} te-ar pune să-i pregătești pentru {alt}?", "{eu}, dacă {alt} te-ar obliga să-i mulțumești după ce o satisfăcu pe {part}, ai face-o?", "{eu}, ce-ai face dacă {part} ar cere să-ți spună în detaliu ce i-a făcut {alt}?", "{eu}, dacă {part} ar cere să o aștepți în genunchi până se întoarce de la {alt}, ai sta?", "{eu}, ce-ai face dacă {part} ar spune că de acum {alt} e partenerul ei principal?", "{eu}, dacă {alt} ar cere să te uite în ochi în timp ce o satisfăce pe {part}, ai rezista?", "{eu}, ce-ai face dacă {part} ar cere să-i spui lui {alt} că ești de acord să fii soțul secundar?", "{eu}, dacă {part} te-ar obliga să-i ții mâna în timp ce {alt} o penetra, ai face-o?", "{eu}, ce-ai face dacă {part} te-ar pune să-i spui lui {alt} că merită să o satisfacă?", "{eu}, dacă {part} ar cere să te dezbraci și să privești gol cum o face cu {alt}, ai accepta?", "{eu}, ce-ai face dacă {part} ar cere să-ți pună lesă în timp ce {alt} o atinge?", "{eu}, dacă {part} ar spune că de acum {alt} decide în dormitorul vostru, ai accepta?", "{eu}, ce-ai face dacă {part} te-ar pune să-i spui lui {alt} „mulțumesc că o satisfaceți pe soția mea“?", "{eu}, dacă {part} ar cere să o privești în fiecare noapte cu {alt}, ai accepta?", "{eu}, dacă {part} ar alege pe altcineva pentru noaptea asta, ai accepta?", "{eu}, ce-ai face dacă {part} ar spune că {alt} o satisface și vrea să rămână cu el?", "{eu}, te-ai simți înlocuit sau împlinit dacă {part} ar pleca cu {alt}?", "{eu}, ce-ai face dacă {part} ar cere să te mute în camera de alături pentru noaptea asta?", "{eu}, dacă {part} ar spune că {alt} e noul ei partener, ai accepta rolul de spectator permanent?", "{eu}, te-ai simți utilizat sau iubit dacă {part} te-ar cere doar pentru a privi?", "{eu}, ce-ai face dacă {part} ar cere ca tu să te muți și {alt} să doarmă cu ea?", "{eu}, dacă {part} ar spune că vrea ca {alt} să fie masculul casei, ai accepta?", "{eu}, te-ai simți nimicit dacă {part} te-ar prezenta grupului ca cel care privește?", "{eu}, ce-ai face dacă {part} ar cere ca tu să-i servești pe ea și {alt} ca majordom?", "{eu}, dacă {part} ar spune că {alt} îți ia locul în pat, unde ai dormi?", "{eu}, te-ar excita sau te-ar distruge să fii înlocuit oficial cu {alt}?", "{eu}, ce-ai face dacă {part} te-ar cere să-i pregătești patul pentru ea și {alt}?", "{eu}, dacă {part} ar spune că {alt} decide acum, ai accepta să fii subordonat?", "{eu}, te-ai simți umilit sau mândru dacă {part} te-ar prezenta drept „soțul care privește“?", "{eu}, ce-ai face dacă {part} ar cere să le faci micul dejun în pat ei și {alt}?", "{eu}, dacă {part} ar spune că {alt} e masculul casei, i-ai mulțumi că o satisface?", "{eu}, te-ai simți inferior sau fericit dacă {part} te-ar cere să faci curat după ce fac dragoste?", "{eu}, ce-ai face dacă {part} ar cere să le ții băuturile în timp ce se iubesc?", "{eu}, dacă {part} ar spune că {alt} îți ia locul, i-ai face loc lui {alt} în pat?", "{eu}, te-ar excita să fii permanent înlocuit cu {alt} în pat?", "{eu}, ce-ai face dacă {part} ar cere să-i spui grupului că {alt} o satisface mai bine?", "{eu}, dacă {part} ar spune că {alt} e partenerul ei preferat, ai accepta să fii secundar?", "{eu}, te-ai simți umilit sau împlinit dacă {part} te-ar ține doar pentru treabă, și pe {alt} pentru pat?", "{eu}, ce-ai face dacă {part} ar cere să-i spui lui {alt} că îi cedezi locul în patul ei?"];
+  ADULT_BASE.cuck.dare=["{part} dansează lent cu {alt} timp de 30 secunde, tu privești din colț.", "{part} îi atinge brațul lui {alt} timp de 20 secunde în timp ce tu servești băuturi.", "{part} stă lângă {alt} pe canapea timp de 1 minut, tu stai în picioare și privești.", "{part} îi zâmbește și îi face cu ochiul lui {alt}, tu aprobi din cap.", "{part} îi șoptește ceva la ureche lui {alt}, tu nu auzi ce spune.", "{part} atinge mâna lui {alt} timp de 15 secunde, tu privești cu mâinile la spate.", "{part} îi face un compliment sincer lui {alt} despre corpul lui, tu asculți.", "{part} stă cu piciorul peste al lui {alt} timp de 30 secunde, tu privești de pe scaun.", "{part} îi mângâie părul lui {alt} timp de 15 secunde, tu nu te miști.", "{part} dansează un dans lent și pasional cu {alt} timp de 1 minut, tu privești.", "{part} îi ține mâna lui {alt} timp de 30 secunde în fața ta.", "{part} se așază pe brațul fotoliului lui {alt}, tu stai pe podea lângă ei.", "{part} se uită adânc în ochii lui {alt} timp de 20 secunde, tu le urmărești privirile.", "{part} mângâie cotul lui {alt} în timp ce vorbește cu el, tu asculți tăcut.", "{part} îi pune mâna pe coapsă lui {alt} timp de 15 secunde, tu observi fără să comentezi.", "{part} râde la o glumă de a lui {alt} și îl atinge pe umăr, tu privești.", "{part} dansează cu {alt} și își presează corpul de el, tu privești din colț.", "{part} îi face un compliment intim lui {alt}, tu asculți cu capul plecat.", "{part} stă în brațele lui {alt} timp de 30 secunde, tu le servești băuturi.", "{part} îi mângâie spatele lui {alt} timp de 20 secunde, tu privești nemișcat.", "{part} îi dă un pupic pe obraz lui {alt}, tu înclini capul.", "{part} stă în poala lui {alt} timp de 20 secunde, tu servești băuturi.", "{part} îi pune mâna pe piept lui {alt} timp de 15 secunde, tu privești cu mâinile la spate.", "{part} se apropie de {alt} și îi miroase gâtul, tu asculți cum râde ea.", "{part} îl atinge pe {alt} pe față timp de 10 secunde, tu nu te miști.", "{part} îi mângâie coapsa lui {alt} timp de 15 secunde, tu privești cu ochii pe ei.", "{part} stă cu spatele la tine și cu fața la {alt} timp de 30 secunde.", "{part} îi spune lui {alt} ce îi place la el, tu asculți cu capul plecat.", "{part} își pune capul pe umărul lui {alt} timp de 20 secunde, tu privești.", "{part} îi prinde mâna lui {alt} și o duce la gura ei, tu privești.", "{eu}, îngenunchează și mulțumește-i lui {alt} că îți acordă atenție {part}.", "{eu}, toarnă-i băutură lui {alt} în genunchi, în timp ce {part} îi zâmbește.", "{eu}, spune-i lui {alt} în fața lui {part}: „{part} merită ce e mai bun“.", "{eu}, ține paharul lui {alt} ridicat timp de 20 secunde în timp ce {part} îl complimentează.", "{eu}, stai pe podea lângă scaunul lui {part} în timp ce {alt} îi vorbește.", "{eu}, rostește în fața grupului: „merit să privesc“ în timp ce {part} atinge mâna lui {alt}.", "{eu}, fă o reverență către {alt} și spune „onorul este al meu“ când {part} îl salută.", "{eu}, ține mâinile la spate timp de 30 secunde în timp ce {part} dansează cu {alt}.", "{eu}, complimentează-i lui {alt} un detaliu fizic în fața lui {part}.", "{eu}, spune-i lui {part}: „te las să te bucuri de {alt}, sunt aici doar ca să privesc“.", "{part} stă pe genunchii lui {alt} timp de 30 secunde în timp ce tu servești băuturi.", "{part} sărută-l pe {alt} pe gât timp de 10 secunde, tu stai în picioare și privești.", "{part} îi descheie un nasture de la cămașă lui {alt}, tu privești fără să te miști.", "{part} mângâie pieptul lui {alt} pe deasupra cămășii timp de 20 secunde, tu privești.", "{part} stă în poala lui {alt} și se leagănă ușor timp de 30 secunde, tu privești.", "{part} îl sărută pe {alt} pe buze timp de 5 secunde, tu privești cu respirația tăiată.", "{part} îi scoate cămașa lui {alt}, tu stai cu mâinile la spate și privești.", "{part} mângâie pieptul gol al lui {alt} timp de 20 secunde, tu privești din colț.", "{part} stă pe genunchii lui {alt} cu fața la el timp de 30 secunde, tu le servești băuturi.", "{part} îl sărută pe {alt} pe piept timp de 10 secunde, tu privești.", "{part} îi mângâie coapsa lui {alt} aproape de zona intimă timp de 15 secunde.", "{part} își freacă sânii de brațul lui {alt} timp de 20 secunde, tu privești.", "{part} îl sărută pe {alt} pe gât și pe ureche timp de 15 secunde, tu stai nemișcat.", "{part} îi descheie încă un nasture cămașii lui {alt}, tu privești nemișcat.", "{part} stă cu fața la {alt} și îl sărută pe gură timp de 10 secunde, tu privești din colț.", "{part} mângâie fața și gâtul lui {alt} timp de 20 secunde, tu asculți cum respiră.", "{part} îi descheie cureaua lui {alt}, tu privești fără să te miști.", "{part} își pune mâna pe pântecul lui {alt} timp de 20 secunde, tu privești.", "{part} îl sărută pe {alt} pe buze cu limbă timp de 10 secunde, tu privești cu ochii mari.", "{part} se freacă cu corpul de {alt} timp de 20 secunde, tu le servești băuturi.", "{part} îl mângâie pe {alt} pe spate și pe fese timp de 20 secunde, tu privești nemișcat.", "{part} stă în poala lui {alt} cu picioarele peste ale lui, timp de 30 secunde.", "{part} îl sărută pe {alt} pe umeri și pe piept timp de 20 secunde, tu privești.", "{part} îi mângâie părul lui {alt} cu ambele mâini timp de 20 secunde, tu privești.", "{part} stă cu spatele la tine și îl sărută pe {alt} pe gură timp de 10 secunde.", "{part} îi șoptește la ureche lui {alt} ce vrea să-i facă, tu nu auzi, doar privești.", "{part} își pune mâna pe fesa lui {alt} timp de 15 secunde, tu privești.", "{part} îl sărută pe {alt} pe burtă timp de 10 secunde, tu privești.", "{part} mângâie coapsele lui {alt} cu ambele mâini timp de 20 secunde, tu privești.", "{part} îi scoate o piesă de haină lui {alt}, tu îi iei haina și o pui deoparte.", "{eu}, îngenunchează lângă {part} și ține-i paharul în timp ce {alt} o sărută pe obraz.", "{eu}, spune-i lui {alt} în fața grupului: „sper că o satisfaceți pe {part} mai bine decât mine“.", "{eu}, ține mâna lui {part} ridicată ca pe un trofeu în timp ce {alt} îi face un compliment.", "{eu}, așază-te cu fața la perete 30 secunde în timp ce {part} dansează lent cu {alt}.", "{eu}, rostește „sunt aici doar ca să servesc“ și adu o gustare lui {part} și {alt}.", "{eu}, stai pe podea cu picioarele încrucișate în timp ce {part} stă în poala lui {alt}.", "{eu}, complimentează-i lui {part} cât de bine arată cu {alt}, în timp ce-i servești băuturi.", "{eu}, mulțumește-i lui {alt} că îi acordă atenție {part}, cu capul plecat.", "{eu}, ține ochii în jos 20 secunde în timp ce {part} îl sărută pe {alt} pe gât.", "{eu}, spune-i lui {part}: „te las să te bucuri, eu rămân în colț“ și retrage-te.", "{part} îi face un lap dance lui {alt} timp de 30 secunde, tu privești din colț.", "{part} îi descheie pantalonii lui {alt}, tu stai cu mâinile la spate și privești.", "{part} mângâie pe {alt} pe deasupra chiloților timp de 15 secunde, tu privești.", "{part} îl sărută pe {alt} pe burtă și coboară timp de 15 secunde, tu privești.", "{part} stă în genunchi în fața lui {alt} timp de 20 secunde, tu privești.", "{part} își pune mâna în chiloții lui {alt} timp de 15 secunde, tu privești cu gura deschisă.", "{part} îl sărută pe {alt} pe coapsele interioare timp de 15 secunde, tu privești.", "{part} îi scoate chiloții lui {alt}, tu privești nemișcat.", "{part} îl atinge pe {alt} pe penis timp de 15 secunde, tu privești.", "{part} îl sărută pe {alt} pe coapse și urcă timp de 15 secunde, tu privești.", "{part} îi face o labă lui {alt} timp de 30 secunde, tu privești din colț.", "{part} stă în genunchi și îl mângâie pe {alt} timp de 20 secunde, tu privești.", "{part} îi linge vârful penisului lui {alt} timp de 5 secunde, tu privești cu respirația tăiată.", "{part} îl ia în gură pe {alt} timp de 10 secunde, tu privești cu ochii mari.", "{part} îl suge pe {alt} timp de 20 secunde, tu stai în picioare și privești.", "{part} își scoate cămașa și îi mângâie lui {alt} penisul cu sânii timp de 15 secunde.", "{part} stă cu sânii pe fața lui {alt} timp de 15 secunde, tu privești.", "{part} îi face un lap dance lui {alt} și se freacă de penisul lui timp de 30 secunde.", "{part} îl sărută pe {alt} pe gură în timp ce îi mângâie penisul timp de 15 secunde.", "{part} își scoate sutienul în fața lui {alt}, tu privești nemișcat.", "{part} stă în poala lui {alt} cu sânii goi timp de 30 secunde, tu privești.", "{part} îi dă sânii la gură lui {alt} timp de 15 secunde, tu privești.", "{part} îi linge sfârcurile lui {alt} timp de 15 secunde, tu privești.", "{part} mângâie penisul lui {alt} cu sânii timp de 20 secunde, tu privești.", "{part} stă în genunchi și îl suge pe {alt} timp de 30 secunde, tu privești din colț.", "{part} își scoate pantalonii în fața lui {alt}, tu privești.", "{part} stă cu chiloții pe ea în poala lui {alt} timp de 30 secunde.", "{part} își freacă fesele de penisul lui {alt} timp de 20 secunde, tu privești.", "{part} îl lasă pe {alt} să-i mângâie sânii timp de 20 secunde, tu privești.", "{part} îl sărută pe {alt} pe gură în timp ce stă în poala lui timp de 20 secunde.", "{eu}, îngenunchează lângă pat și privește cum {part} îl sărută pe {alt}, fără să te miști 30 secunde.", "{eu}, spune-i lui {alt} cu voce tare: „o satisfaceți pe {part} mai bine decât mine vreodată“.", "{eu}, ține paharul lui {alt} în timp ce {part} îi face o labă, cu ochii în jos.", "{eu}, rostește „merit să fiu doar spectator“ în timp ce {part} îl suge pe {alt}.", "{eu}, așază-te cu fața la podea 20 secunde în timp ce {part} stă în poala lui {alt}.", "{eu}, mulțumește-i lui {alt} după ce {part} îl sărută pe gât, cu capul plecat.", "{eu}, spune-i grupului: „{alt} o face pe {part} mai fericită decât mine“.", "{eu}, servește-i o băutură lui {alt} în genunchi în timp ce {part} îl mângâie.", "{eu}, ține mâinile lui {part} în timp ce {alt} o sărută pe gură.", "{eu}, rostește „îi cedez locul lui {alt} în patul {part}, sunt de acord“.", "{part} își scoate cămașa și îl lasă pe {alt} să-i mângâie spatele gol timp de 20 secunde, tu nu te miști.", "{part} își scoate toate hainele în fața lui {alt}, tu privești din colț.", "{part} stă goală în fața lui {alt} timp de 30 secunde, tu privești.", "{part} îl lasă pe {alt} să-i mângâie sânii goi timp de 30 secunde, tu privești nemișcat.", "{part} îl lasă pe {alt} să-i mângâie tot corpul gol timp de 30 secunde, tu privești.", "{part} stă goală în poala lui {alt} timp de 30 secunde, tu le servești băuturi.", "{part} îl lasă pe {alt} să-i sărute sânii timp de 20 secunde, tu privești cu respirația tăiată.", "{part} îl lasă pe {alt} să-i lingă sfârcurile timp de 20 secunde, tu privești.", "{part} îl lasă pe {alt} să-i mângâie fesele goale timp de 20 secunde, tu privești.", "{part} îl lasă pe {alt} să-i mângâie între picioare peste chiloți timp de 20 secunde.", "{part} își dă jos chiloții și stă goală în fața lui {alt}, tu privești.", "{part} îl lasă pe {alt} să-i mângâie păsărica timp de 20 secunde, tu privești.", "{part} îl lasă pe {alt} să-i dea o degetare timp de 20 secunde, tu privești.", "{part} stă pe pat cu {alt} deasupra ei timp de 30 secunde, tu privești din colț.", "{part} îl lasă pe {alt} să o mănânce timp de 20 secunde, tu privești.", "{part} îl lasă pe {alt} să-i lingă păsărica timp de 20 secunde, tu privești.", "{part} stă cu picioarele deschise pentru {alt} timp de 20 secunde, tu privești.", "{part} îl lasă pe {alt} să o atingă intim cu degetele timp de 20 secunde, tu privești.", "{part} stă în patru labe pentru {alt} timp de 20 secunde, tu privești.", "{part} îl lasă pe {alt} să o penetreze cu degetele timp de 20 secunde, tu privești.", "{part} îl lasă pe {alt} să o atingă din spate timp de 20 secunde, tu privești.", "{part} stă cu fața la perete și îl lasă pe {alt} să o mângâie pe spate și pe fese timp de 20 secunde.", "{part} stă cu spatele la {alt} și îl lasă să se freacă de ea timp de 20 secunde, tu privești.", "{part} îl lasă pe {alt} să o sărute pe tot corpul timp de 30 secunde, tu privești.", "{part} îl lasă pe {alt} să o facă oral timp de 20 secunde, tu privești.", "{part} stă în patru labe și îl lasă pe {alt} să o mângâie intim timp de 20 secunde, tu privești.", "{part} îl lasă pe {alt} să o atingă intim cu ambele mâini timp de 20 secunde, tu privești.", "{part} stă goală lângă {alt} timp de 30 secunde, tu le servești băuturi în genunchi.", "{part} îl lasă pe {alt} să-i pună mâna pe păsărica și să o maseze timp de 20 secunde.", "{part} stă pe pat cu {alt} deasupra ei timp de 1 minut, tu privești din colț cu mâinile la spate."];
+  var ADULT=ADULT_BASE;
+
+  var R=null,view='hub',cfg=null,game=null,qType=null,curQ=null,curG=null,consentTarget=null;
+
+  function shuf(a){var r=a.slice();for(var i=r.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=r[i];r[i]=r[j];r[j]=t}return r}
+  function esc2(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}
+  function hap2(k){try{if(window.HB&&HB.haptic)HB.haptic(k)}catch(e){}}
+
+  /* pick a random player excluding given names — ensures no duplicates */
+  function pickExcluding(excludeNames){var pool=game.order.filter(function(p){return excludeNames.indexOf(p.n)===-1});return pool.length?pool[Math.floor(Math.random()*pool.length)].n:null}
+
+  /* pick opposite gender excluding names */
+  function pickOppositeExcluding(excludeNames){var me=game.order[game.idx];var want=me.g==='M'?'F':me.g==='F'?'M':null;if(!want)return pickExcluding(excludeNames);var pool=game.order.filter(function(p){return excludeNames.indexOf(p.n)===-1&&p.g===want});if(!pool.length)pool=game.order.filter(function(p){return excludeNames.indexOf(p.n)===-1});return pool.length?pool[Math.floor(Math.random()*pool.length)].n:null}
+
+  function getPartner(name){var p=game.order.find(function(p){return p.n===name});return(p&&p.partner)||null}
+
+  /* get someone else's partner, excluding given names */
+  function getOtherPartnerExcluding(excludeNames){var pool=game.order.filter(function(p){return p.partner&&excludeNames.indexOf(p.n)===-1&&excludeNames.indexOf(p.partner)===-1});if(!pool.length)return pickExcluding(excludeNames);var chosen=pool[Math.floor(Math.random()*pool.length)];return chosen.partner}
+
+  /* FIXED: resolve all template vars ensuring ALL DIFFERENT people */
+  function resolveText(text){
+    var me=game.order[game.idx];
+    var eu=me.n;
+    var used=[eu];
+    var alt=null,opus=null,part=null,part_alt=null;
+    var consent=null;
+
+    /* part = your partner (fixed, not random) */
+    if(text.indexOf('{part}')!==-1){
+      part=getPartner(eu);
+      if(part&&part!==eu&&used.indexOf(part)===-1){used.push(part)}
+      else{part=pickExcluding(used);if(part)used.push(part)}
+    }
+
+    /* alt = random other, different from eu and part */
+    if(text.indexOf('{alt}')!==-1){
+      alt=pickExcluding(used);
+      if(alt){used.push(alt);consent=alt}
+    }
+
+    /* opus = opposite gender, different from eu, part, alt */
+    if(text.indexOf('{opus}')!==-1){
+      opus=pickOppositeExcluding(used);
+      if(opus){used.push(opus);consent=opus}
+    }
+
+    /* part_alt = someone else's partner, different from all above */
+    if(text.indexOf('{part_alt}')!==-1){
+      part_alt=getOtherPartnerExcluding(used);
+      if(part_alt){used.push(part_alt);consent=part_alt}
+    }
+
+    var result=text;
+    result=result.split('{eu}').join(eu);
+    result=result.split('{alt}').join(alt||eu);
+    result=result.split('{opus}').join(opus||alt||eu);
+    result=result.split('{part}').join(part||eu);
+    result=result.split('{part_alt}').join(part_alt||alt||eu);
+    return{text:result,consent:consent};
+  }
+
+  /* pick question — per-genre+type tracking, no repeats until exhausted */
+  function pickQuestion(){
+    var me=game.order[game.idx];
+    var gender=me.g||'any';
+    var pool=[];
+    if(cfg.adult){
+      cfg.adultGenres.forEach(function(g){
+        var data=ADULT[g];if(!data||data.comingSoon)return;
+        if(data.dareOnly&&qType==='truth')return;
+        var items=data[qType];if(items&&items.length)pool.push({g:g,items:items});
+      });
+    }
+    cfg.genres.forEach(function(g){
+      var data=GENRES[g];if(data&&data[qType]&&data[qType].length)pool.push({g:g,items:data[qType]});
+    });
+    if(!pool.length)return null;
+    var key=qType;
+    if(!game.usedQ[key])game.usedQ[key]=[];
+    var used=game.usedQ[key];
+    /* build available items (not yet used) */
+    var avail=[];
+    pool.forEach(function(c){c.items.forEach(function(item){var text=typeof item==='string'?item:item.t;var uk=c.g+'|'+text;if(used.indexOf(uk)===-1)avail.push({g:c.g,text:text})})});
+    /* if all used, reset */
+    if(!avail.length){used.length=0;pool.forEach(function(c){c.items.forEach(function(item){var text=typeof item==='string'?item:item.t;avail.push({g:c.g,text:text})})})}
+    if(!avail.length)return null;
+    var choice=avail[Math.floor(Math.random()*avail.length)];
+    used.push(choice.g+'|'+choice.text);
+    return{text:choice.text,genre:choice.g};
+  }
+
+  function render(){
+    if(!R)return;
+    if(view==='hub')renderHub();else if(view==='config')renderConfig();
+    else if(view==='names-org')renderNamesOrg();else if(view==='names-ind')renderNamesInd();
+    else if(view==='couples')renderCouples();else if(view==='review')renderReview();
+    else if(view==='play')renderPlay();else if(view==='adult-warn')renderAdultWarn();
+  }
+
+  function renderHub(){
+    R.innerHTML='<div class="tod-wrap"><div class="tod-scroll"><div class="tod-hero">'+
+      '<div class="tod-logo">'+LOGO+SPARK+SPARK+'</div>'+
+      '<h1>Adevăr sau Provocare</h1>'+
+      '<p>Întrebări nebune, provocări cu numele tău și o seară pe care n-o uiți</p>'+
+      '<div class="tod-badges"><span class="tod-badge n">2–50 jucători</span><span class="tod-badge n">5 genuri</span><span class="tod-badge hot">18+ cu 7 categorii</span></div>'+
+    '</div><div class="tod-hub-body"><div class="tod-start" data-act="tod">'+
+      '<div class="tod-start-ic">'+GI('play')+'</div>'+
+      '<div class="tod-start-in"><h3>Începe jocul</h3><p>Configurare rapidă · alegi genurile · te joci</p></div>'+
+      '<div class="tod-start-go">'+GI('next')+'</div></div></div></div></div>';
+    R.querySelector('[data-act="tod"]').addEventListener('click',function(){hap2(1);cfg={count:4,mode:'org',adult:false,genres:['light'],adultGenres:[],names:[],couples:false,pairs:[]};view='config';render()});
+  }
+
+  function renderConfig(){
+    var gList=Object.keys(GENRES),aList=Object.keys(ADULT);
+    var h='<div class="tod-wrap"><div class="tod-scroll"><div class="tod-screen">'+
+      '<div class="tod-top"><button class="tod-back" data-act="back">'+GI('back')+'</button><h2>Configurare</h2></div>'+
+      '<div class="tod-sec"><div class="tod-sec-t">Număr jucători</div><div class="tod-stepper"><button data-act="minus">−</button><div><div class="val">'+cfg.count+'</div><div class="lbl">jucători</div></div><button data-act="plus">+</button></div></div>'+
+      '<div class="tod-sec"><div class="tod-sec-t">Mod introducere</div><div class="tod-seg2"><button class="'+(cfg.mode==='org'?'on':'')+'" data-mode="org">Organizator</button><button class="'+(cfg.mode==='ind'?'on':'')+'" data-mode="ind">Individual</button></div><p class="hint" style="margin:6px 4px 0">'+(cfg.mode==='org'?'O persoană introduce toate numele.':'Fiecare jucător își introduce propriul nume — telefonul se pasează.')+'</p></div>'+
+      '<div class="tod-sec"><div class="tod-sec-t">Genuri</div><div class="tod-genres">';
+    gList.forEach(function(g){var d=GENRES[g];var on=cfg.genres.indexOf(g)!==-1;var cnt=(d.truth.length+d.dare.length)+' itemi';h+='<div class="tod-chip'+(on?' on':'')+'" data-genre="'+g+'"><div class="ck"></div><div class="ci" style="background:'+d.c+'">'+GI(d.ic)+'</div><div class="ct"><b>'+d.label+'</b><small>'+d.desc+'</small><div class="cnt">'+cnt+'</div></div></div>'});
+    h+='</div></div><div class="tod-sec"><div class="tod-sec-t">Conținut 18+</div><div class="tod-chip'+(cfg.adult?' on':'')+'" data-act="adult-toggle"><div class="ck"></div><div class="ci" style="background:#ec4899">'+GI('warn')+'</div><div class="ct"><b>Activează modul 18+</b><small>Cuplu · Cupluri · Swingers · BDSM · Cuck · Touch · Fantezii</small></div></div>';
+    if(cfg.adult){h+='<div class="tod-genres" style="margin-top:10px"';aList.forEach(function(g){var d=ADULT[g];var on=cfg.adultGenres.indexOf(g)!==-1;var cnt=d.comingSoon?'În curând':((d.truth?d.truth.length:0)+(d.dare?d.dare.length:0))+' itemi';h+='<div class="tod-chip'+(on?' on':'')+'" data-agenre="'+g+'"><div class="ck"></div><div class="ci" style="background:'+d.c+'">'+GI(d.ic)+'</div><div class="ct"><b>'+d.label+'</b><small>'+d.desc+'</small><div class="cnt">'+cnt+'</div></div></div>'});h+='</div>'}
+    h+='</div>';
+    var needCouples=cfg.adult&&(cfg.adultGenres.indexOf('swingers')!==-1||cfg.adultGenres.indexOf('cuck')!==-1);
+    if(needCouples){h+='<div class="tod-sec"><div class="tod-sec-t">Cupluri</div><div class="tod-chip'+(cfg.couples?' on':'')+'" data-act="couples-toggle"><div class="ck"></div><div class="ci" style="background:#f59e0b">'+GI('link')+'</div><div class="ct"><b>Asociază cupluri</b><small>Alege cine e cu cine. Cine rămâne singur e wildcard.</small></div></div></div>'}
+    var canGo=cfg.genres.length>0||(cfg.adult&&cfg.adultGenres.length>0);
+    h+='<button class="tod-go'+(cfg.adult?' alt':'')+'" data-act="next"'+(canGo?'':' disabled')+'>Continuă</button></div></div></div>';
+    R.innerHTML=h;bindConfig();
+  }
+
+  function bindConfig(){
+    R.querySelector('[data-act="back"]').addEventListener('click',function(){hap2(0);view='hub';render()});
+    R.querySelector('[data-act="minus"]').addEventListener('click',function(){hap2(0);if(cfg.count>2){cfg.count--;render()}});
+    R.querySelector('[data-act="plus"]').addEventListener('click',function(){hap2(0);if(cfg.count<50){cfg.count++;render()}});
+    R.querySelectorAll('[data-mode]').forEach(function(b){b.addEventListener('click',function(){hap2(0);cfg.mode=b.dataset.mode;render()})});
+    R.querySelectorAll('[data-genre]').forEach(function(c){c.addEventListener('click',function(){hap2(0);var g=c.dataset.genre;var i=cfg.genres.indexOf(g);if(i!==-1)cfg.genres.splice(i,1);else cfg.genres.push(g);render()})});
+    R.querySelector('[data-act="adult-toggle"]').addEventListener('click',function(){hap2(1);if(!cfg.adult){view='adult-warn';render();return}cfg.adult=false;cfg.adultGenres=[];cfg.couples=false;render()});
+    R.querySelectorAll('[data-agenre]').forEach(function(c){c.addEventListener('click',function(){hap2(0);var g=c.dataset.agenre;var i=cfg.adultGenres.indexOf(g);if(i!==-1)cfg.adultGenres.splice(i,1);else cfg.adultGenres.push(g);if(cfg.adultGenres.indexOf('swingers')===-1&&cfg.adultGenres.indexOf('cuck')===-1)cfg.couples=false;render()})});
+    var ct=R.querySelector('[data-act="couples-toggle"]');if(ct)ct.addEventListener('click',function(){hap2(0);cfg.couples=!cfg.couples;render()});
+    var nb=R.querySelector('[data-act="next"]');if(nb&&!nb.disabled)nb.addEventListener('click',function(){hap2(1);cfg.names=[];for(var i=0;i<cfg.count;i++)cfg.names.push({n:'',g:'any'});if(cfg.mode==='ind'){view='names-ind';cfg.indIdx=0;render()}else{view='names-org';render()}});
+  }
+
+  function renderAdultWarn(){
+    R.innerHTML='<div class="tod-wrap"><div class="tod-aw"><div class="ic">'+GI('warn')+'</div><h2>Conținut 18+</h2><p>Acest mod conține întrebări și provocări cu adevărat pentru adulți — conținut sexual, psihologic și fizic. Continuă doar dacă ai peste 18 ani și toți participanții sunt de acord.</p><div class="warn"><b>Important:</b> Fiecare jucător alege sexul (M/F/O). Întrebările se adaptează. Provocările care implică alt jucător <b>cer acordul acelui jucător</b>. Unele provocări sunt hardcore și s-ar putea să fie omise — e normal. Folosiți un cuvânt de siguranță.</div><div class="btns"><button class="yes" data-act="accept">Am peste 18 ani — Continuă</button><button class="no" data-act="cancel">Înapoi</button></div></div></div>';
+    R.querySelector('[data-act="accept"]').addEventListener('click',function(){hap2(2);cfg.adult=true;if(!cfg.adultGenres.length)cfg.adultGenres=['cuplu'];view='config';render()});
+    R.querySelector('[data-act="cancel"]').addEventListener('click',function(){hap2(0);view='config';render()});
+  }
+
+  function renderNamesOrg(){
+    var h='<div class="tod-wrap"><div class="tod-scroll"><div class="tod-screen"><div class="tod-top"><button class="tod-back" data-act="back">'+GI('back')+'</button><h2>Nume jucători</h2></div><div class="tod-sec"><div class="tod-sec-t">'+cfg.count+' participanți</div><div class="tod-names">';
+    for(var i=0;i<cfg.count;i++){var p=cfg.names[i]||{n:'',g:'any'};h+='<div class="tod-name"><div class="av">'+(i+1)+'</div><input type="text" maxlength="20" placeholder="Jucător '+(i+1)+'" data-name="'+i+'" value="'+esc2(p.n)+'" autocomplete="off">';if(cfg.adult){h+='<div class="gnd"><button class="'+(p.g==='M'?'on m':'')+'" data-gnd="M" data-idx="'+i+'">M</button><button class="'+(p.g==='F'?'on f':'')+'" data-gnd="F" data-idx="'+i+'">F</button><button class="'+(p.g==='any'||p.g==='O'?'on o':'')+'" data-gnd="O" data-idx="'+i+'">O</button></div>'}h+='</div>'}
+    h+='</div></div>';if(cfg.adult)h+='<p class="hint" style="margin:-4px 4px 12px">M = Bărbat · F = Femeie · O = Altul</p>';
+    var canStart=cfg.names.every(function(p){return p.n&&p.n.trim().length>0});
+    h+='<button class="tod-go'+(cfg.adult?' alt':'')+'" data-act="review"'+(canStart?'':' disabled')+'>Verifică și începe</button></div></div></div>';
+    R.innerHTML=h;bindNamesOrg();
+  }
+
+  function bindNamesOrg(){
+    R.querySelector('[data-act="back"]').addEventListener('click',function(){hap2(0);view='config';render()});
+    R.querySelectorAll('[data-name]').forEach(function(inp){inp.addEventListener('input',function(){var idx=parseInt(inp.dataset.name);cfg.names[idx].n=inp.value;var btn=R.querySelector('[data-act="review"]');if(btn){var ok=cfg.names.every(function(p){return p.n&&p.n.trim().length>0});btn.disabled=!ok}})});
+    if(cfg.adult){R.querySelectorAll('[data-gnd]').forEach(function(b){b.addEventListener('click',function(){hap2(0);var idx=parseInt(b.dataset.idx);cfg.names[idx].g=b.dataset.gnd;render()})})}
+    var rb=R.querySelector('[data-act="review"]');if(rb)rb.addEventListener('click',function(){hap2(1);if(cfg.couples){view='couples';cfg.pairs=[];render()}else{view='review';render()}});
+  }
+
+  function renderNamesInd(){
+    var idx=cfg.indIdx||0;
+    if(idx>=cfg.count){if(cfg.couples){view='couples';cfg.pairs=[];render()}else{view='review';render()}return}
+    var p=cfg.names[idx]||{n:'',g:'any'};
+    var h='<div class="tod-wrap"><div class="tod-pass"><div class="pnum">'+(idx+1)+'</div><h2>Pasează telefonul</h2><p>Jucătorul '+(idx+1)+' din '+cfg.count+' — introdu-ți numele'+(cfg.adult?' și alege-ți sexul':'')+'.</p><div class="pf"><div class="tod-name" style="height:54px"><div class="av">'+(idx+1)+'</div><input type="text" maxlength="20" id="ind-name" placeholder="Numele tău" value="'+esc2(p.n)+'" autocomplete="off">';
+    if(cfg.adult){h+='<div class="gnd"><button class="'+(p.g==='M'?'on m':'')+'" data-gnd="M">M</button><button class="'+(p.g==='F'?'on f':'')+'" data-gnd="F">F</button><button class="'+(p.g==='any'||p.g==='O'?'on o':'')+'" data-gnd="O">O</button></div>'}
+    h+='</div>';if(cfg.adult)h+='<p class="hint" style="text-align:left;margin:8px 4px 0">M = Bărbat · F = Femeie · O = Altul</p>';
+    h+='<button class="tod-go'+(cfg.adult?' alt':'')+'" data-act="ind-next" style="margin-top:16px" id="ind-go">Următorul jucător</button></div></div></div>';
+    R.innerHTML=h;
+    var inp=R.querySelector('#ind-name'),goBtn=R.querySelector('#ind-go');
+    function updateGo(){goBtn.disabled=!(inp.value&&inp.value.trim().length>0)}
+    inp.addEventListener('input',updateGo);updateGo();inp.focus();
+    if(cfg.adult){R.querySelectorAll('[data-gnd]').forEach(function(b){b.addEventListener('click',function(){hap2(0);cfg.names[idx].g=b.dataset.gnd;render();var ni=R.querySelector('#ind-name');if(ni){ni.focus();ni.setSelectionRange(ni.value.length,ni.value.length)}})})}
+    function advance(){var name=inp.value.trim();if(!name)return;hap2(1);cfg.names[idx].n=name;cfg.indIdx=idx+1;if(cfg.indIdx>=cfg.count){if(cfg.couples){view='couples';cfg.pairs=[];render()}else{view='review';render()}}else render()}
+    goBtn.addEventListener('click',advance);
+    inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();advance()}});
+  }
+
+  /* FIXED couples pairing — uses cfg.selPair to track selection across renders */
+  function renderCouples(){
+    if(!cfg.selPair)cfg.selPair=null;
+    var h='<div class="tod-wrap"><div class="tod-scroll"><div class="tod-screen"><div class="tod-top"><button class="tod-back" data-act="back">'+GI('back')+'</button><h2>Cupluri</h2></div><div class="tod-couples-info">Apasă pe doi jucători pentru a-i asocia. Apasă pe o pereche formată pentru a o desface. Cine rămâne singur e "wildcard".</div><div class="tod-pair-list">';
+    cfg.names.forEach(function(p){
+      var pair=cfg.pairs.find(function(pr){return pr.a===p.n||pr.b===p.n});
+      var cls='tod-pair';var tag='';var color='#8b5cf6';
+      if(pair){cls+=' paired';tag=pair.a===p.n?'♥ '+pair.b:'♥ '+pair.a;color='#8b5cf6'}
+      else if(cfg.selPair===p.n){cls+=' sel';tag='selectat...';color='#f59e0b'}
+      else{cls+=' wild';tag='wildcard';color='#f59e0b'}
+      h+='<div class="'+cls+'" data-pair-name="'+esc2(p.n)+'"><div class="pi" style="background:'+color+'">'+esc2((p.n[0]||'?').toUpperCase())+'</div><div class="pn">'+esc2(p.n)+'</div><div class="pt">'+tag+'</div></div>';
+    });
+    h+='</div><div class="tod-pair-btns"><button class="btn sm ghost" data-act="auto-pair">Auto-asociază</button><button class="btn sm ghost" data-act="clear-pairs">Șterge tot</button></div><button class="tod-go'+(cfg.adult?' alt':'')+'" data-act="review">Continuă</button></div></div></div>';
+    R.innerHTML=h;bindCouples();
+  }
+
+  function bindCouples(){
+    R.querySelector('[data-act="back"]').addEventListener('click',function(){hap2(0);cfg.selPair=null;if(cfg.mode==='ind'){view='names-ind';cfg.indIdx=cfg.count;render()}else view='names-org';render()});
+    R.querySelector('[data-act="auto-pair"]').addEventListener('click',function(){hap2(1);var avail=shuf(cfg.names.map(function(p){return p.n}));cfg.pairs=[];cfg.selPair=null;for(var i=0;i+1<avail.length;i+=2)cfg.pairs.push({a:avail[i],b:avail[i+1]});render()});
+    R.querySelector('[data-act="clear-pairs"]').addEventListener('click',function(){hap2(0);cfg.pairs=[];cfg.selPair=null;render()});
+    R.querySelectorAll('[data-pair-name]').forEach(function(el){
+      el.addEventListener('click',function(){
+        hap2(0);var name=el.dataset.pairName;
+        var existing=cfg.pairs.find(function(pr){return pr.a===name||pr.b===name});
+        if(existing){cfg.pairs.splice(cfg.pairs.indexOf(existing),1);cfg.selPair=null;render();return}
+        if(!cfg.selPair){cfg.selPair=name;render();return}
+        if(cfg.selPair===name){cfg.selPair=null;render();return}
+        cfg.pairs.push({a:cfg.selPair,b:name});cfg.selPair=null;render();
+      });
+    });
+    R.querySelector('[data-act="review"]').addEventListener('click',function(){hap2(1);cfg.selPair=null;view='review';render()});
+  }
+
+  function renderReview(){
+    var h='<div class="tod-wrap"><div class="tod-scroll"><div class="tod-screen"><div class="tod-top"><button class="tod-back" data-act="back">'+GI('back')+'</button><h2>Verifică</h2></div><div class="tod-review"><h4>Participanți ('+cfg.count+')</h4><div class="pl">';
+    cfg.names.forEach(function(p){h+='<span>'+esc2(p.n)+(cfg.adult&&p.g&&p.g!=='any'?' · '+p.g:'')+'</span>'});
+    h+='</div>';
+    if(cfg.couples&&cfg.pairs.length){h+='<h4 style="margin-top:14px">Cupluri</h4><div class="cl">';cfg.pairs.forEach(function(pr){h+='<span>'+esc2(pr.a)+' ♥ '+esc2(pr.b)+'</span>'});var wp=cfg.names.filter(function(p){return!cfg.pairs.find(function(pr){return pr.a===p.n||pr.b===p.n})});wp.forEach(function(p){h+='<span>'+esc2(p.n)+' (wildcard)</span>'});h+='</div>'}
+    var ag=[];cfg.genres.forEach(function(g){ag.push(GENRES[g].label)});if(cfg.adult)cfg.adultGenres.forEach(function(g){ag.push(ADULT[g].label+' 18+')});
+    h+='<h4 style="margin-top:14px">Genuri ('+ag.length+')</h4><div class="gl">';ag.forEach(function(l){h+='<span>'+esc2(l)+'</span>'});h+='</div></div>';
+    h+='<p class="hint" style="text-align:center;margin-bottom:14px">Ordinea va fi aleatorie și fixă pentru toată sesiunea.</p>';
+    h+='<button class="tod-go'+(cfg.adult?' alt':'')+'" data-act="start">'+GI('play')+'Începe jocul</button></div></div></div>';
+    R.innerHTML=h;
+    R.querySelector('[data-act="back"]').addEventListener('click',function(){hap2(0);if(cfg.couples){view='couples';render()}else if(cfg.mode==='ind'){view='names-ind';cfg.indIdx=cfg.count;render()}else view='names-org';render()});
+    R.querySelector('[data-act="start"]').addEventListener('click',startGame);
+  }
+
+  function startGame(){
+    hap2(2);
+    var order=shuf(cfg.names.map(function(p){var partner=null;if(cfg.couples){var pr=cfg.pairs.find(function(x){return x.a===p.n||x.b===p.n});if(pr)partner=pr.a===p.n?pr.b:pr.a}return{n:p.n,g:p.g||'any',partner:partner}}));
+    game={order:order,idx:0,round:1,skips:{},usedQ:{}};order.forEach(function(p){game.skips[p.n]=0});qType=null;curQ=null;consentTarget=null;view='play';render();
+  }
+
+  function renderPlay(){
+    var player=game.order[game.idx];var skips=game.skips[player.n]||0;
+    var h='<div class="tod-wrap"><div class="tod-play"><div class="tod-play-top"><button class="tod-exit" data-act="exit">'+GI('exit')+'</button><h2>Adevăr sau Provocare</h2><div class="tod-round">Runda '+game.round+'</div></div>';
+    h+='<div class="tod-order">';game.order.forEach(function(p,i){var cls='tod-od';if(i===game.idx)cls+=' active';else if(i<game.idx)cls+=' done';h+='<div class="'+cls+'"></div>'});h+='</div>';
+    h+='<div class="tod-cp"><div class="av">'+esc2((player.n[0]||'?').toUpperCase())+'</div><div class="l">Rândul lui/ei</div><div class="n">'+esc2(player.n)+'</div>';if(skips>0)h+='<div class="sk">Omiteri: <b>'+skips+'</b></div>';h+='</div>';
+    if(!qType){
+      h+='<div class="tod-choice"><button class="tod-cb truth" data-q="truth">'+GI('truth')+'Adevăr</button><button class="tod-cb dare" data-q="dare">'+GI('dare')+'Provocare</button></div>';
+      h+='<div class="tod-qc"><div class="tod-qg">Alege</div><div class="tod-qt" style="font-size:15px;color:var(--mu)">Apasă Adevăr sau Provocare pentru a continua</div></div>';
+      h+='<div class="tod-acts" style="visibility:hidden"><button class="tod-ab pri">'+GI('check')+'</button></div>';
+    } else {
+      var isAdult=cfg.adult&&ADULT[curG];var genreData=cfg.adult&&ADULT[curG]?ADULT[curG]:GENRES[curG];
+      h+='<div class="tod-qc"><div class="tod-qg'+(isAdult?' adult':'')+'">'+(qType==='truth'?'Adevăr':'Provocare')+(isAdult?' · 18+':'')+(genreData?' · '+genreData.label:'')+'</div><div class="tod-qt">'+esc2(curQ)+'</div></div>';
+      h+='<div class="tod-acts">';
+      if(consentTarget){h+='<div class="tod-consent-info">⚠ Această provocare implică pe <b>'+esc2(consentTarget)+'</b>. Cere-i acordul.</div><button class="tod-ab consent" data-act="consent">'+GI('warn')+'Cere acordul</button><button class="tod-ab sk" data-act="skip">'+GI('skip')+'Omite</button>'}
+      else{h+='<button class="tod-ab pri" data-act="done">'+GI('check')+(qType==='truth'?'Am răspuns':'Provocare completată')+'</button><button class="tod-ab sk" data-act="skip">'+GI('skip')+'Omite</button>'}
+      h+='</div>';
+    }
+    h+='</div></div>';R.innerHTML=h;bindPlay();
+  }
+
+  function bindPlay(){
+    R.querySelector('[data-act="exit"]').addEventListener('click',function(){hap2(0);ask('Oprești jocul?','Jocul curent se va opri și vei reveni la hub.','Oprește').then(function(ok){if(ok){view='hub';game=null;cfg=null;qType=null;curQ=null;render()}})});
+    if(!qType){
+      R.querySelectorAll('[data-q]').forEach(function(b){b.addEventListener('click',function(){hap2(1);qType=b.dataset.q;var q=pickQuestion();if(!q){toast('Nu am întrebări pentru selecția aleasă.');qType=null;return}var resolved=resolveText(q.text);curQ=resolved.text;curG=q.genre;consentTarget=resolved.consent;render()})});
+    } else {
+      if(consentTarget){
+        R.querySelector('[data-act="consent"]').addEventListener('click',function(){hap2(1);var player=game.order[game.idx];ask('Acord necesar',player.n+' vrea să facă o provocare care te implică pe tine, '+consentTarget+'. Accept?','Accept').then(function(ok){if(ok){hap2(2);consentTarget=null;render()}else{toast('Refuzat — se trece la omitere.');skipPlayer()}})});
+        R.querySelector('[data-act="skip"]').addEventListener('click',function(){hap2(0);skipPlayer()});
+      } else {
+        R.querySelector('[data-act="done"]').addEventListener('click',function(){hap2(2);nextPlayer()});
+        R.querySelector('[data-act="skip"]').addEventListener('click',function(){hap2(0);skipPlayer()});
+      }
+    }
+  }
+
+  function skipPlayer(){var p=game.order[game.idx];game.skips[p.n]=(game.skips[p.n]||0)+1;nextPlayer()}
+  function nextPlayer(){qType=null;curQ=null;consentTarget=null;game.idx++;if(game.idx>=game.order.length){game.idx=0;game.round++}render()}
+
+  function mount(root){R=root;view='hub';cfg=null;game=null;qType=null;curQ=null;consentTarget=null;render()}
+  function show(){}
+  function hide(){}
+  function back(){
+    if(view==='hub')return false;
+    if(view==='play'){ask('Oprești jocul?','Jocul curent se va opri.','Oprește').then(function(ok){if(ok){view='hub';game=null;cfg=null;qType=null;render()}});return true}
+    if(view==='adult-warn'){view='config';render();return true}
+    if(view==='config'){view='hub';render();return true}
+    if(view==='names-org'){view='config';render();return true}
+    if(view==='names-ind'){if(cfg.indIdx>0){cfg.indIdx--;render()}else{view='config';render()}return true}
+    if(view==='couples'){cfg.selPair=null;if(cfg.mode==='ind'){view='names-ind';cfg.indIdx=cfg.count;render()}else{view='names-org';render()}return true}
+    if(view==='review'){if(cfg.couples){view='couples';render()}else if(cfg.mode==='ind'){view='names-ind';cfg.indIdx=cfg.count;render()}else{view='names-org';render()}return true}
+    return false;
+  }
+  return{mount:mount,show:show,hide:hide,back:back};
+})();
+/* ===== ROOM: Chat ===== */
+/* ===== ROOM: Community ===== */
+const emptyPg=(ic,t,s)=>`<div class="empty"><div class="ring">${I(ic)}</div><h2>${esc(t)}</h2><p>${esc(s||"În curând")}</p></div>`;
+let cur=null;
+function buildShell(){
+ $("#stage").innerHTML=ROOMS.map(r=>`<section class="room" id="r-${r.id}"></section>`).join("");
+ $("#nav").innerHTML=ROOMS.map(r=>`<button class="tb" data-id="${r.id}"><span class="ic"><svg viewBox="0 0 24 24">${P[r.ic]}</svg></span>${esc(r.label)}</button>`).join("")}
+function go(id){const R=ROOMS.find(x=>x.id==id);if(!R||id==cur)return;const prev=cur;cur=id;
+ $$(".tb").forEach(t=>t.classList.toggle("on",t.dataset.id==id));
+ $$(".room").forEach(s=>s.classList.toggle("on",s.id=="r-"+id));
+ const el=$("#r-"+id);
+ if(!el.dataset.m){el.dataset.m=1;const H=Rooms[id];if(H&&H.mount)H.mount(el);else el.innerHTML=emptyPg(R.ic,R.title||R.label)}
+ if(prev&&Rooms[prev]&&Rooms[prev].hide)Rooms[prev].hide();
+ if(Rooms[id]&&Rooms[id].show)Rooms[id].show();
+ $("#srch").hidden=!R.search}
+function resetShell(){cur=null;$$(".room").forEach(s=>{delete s.dataset.m;s.innerHTML="";s.classList.remove("on")});$$(".tb").forEach(t=>t.classList.remove("on"))}
+
+/* =====================================================================
+   DRAWER (hamburger)
+   ===================================================================== */
+const MEDIA=[
+ {id:"cinema",t:"Cinema",s:"Filme, seriale, anime",ic:"film"},
+ {id:"books",t:"Books",s:"Cărți",ic:"book"},
+ {id:"comics",t:"Comics",s:"Manga și benzi desenate",ic:"comics"}
+];
+const di=(pg,ic,t)=>`<button class="di" data-pg="${pg}"><span class="ri">${I(ic)}</span><span class="dt">${t}</span></button>`;
+function buildDrawer(){$("#dr").innerHTML=`<div class="dh">${WM()}</div>
+ ${di("profile","user","Profile")}
+ <div id="dAdm" hidden>${di("admin","shield","Admin Panel")}</div>
+ ${di("studio","wand","Pulse Studio")}
+ ${di("tracker","tracker","HiBlue Tracker")}
+ <button class="di" data-sub="media"><span class="ri">${I("film")}</span><span class="dt">Media</span><span class="ch">${I("chev")}</span></button>
+ <div class="sub" id="sub-media"><div>${MEDIA.map(m=>`<button class="di s" data-pg="${m.id}"><span class="ri">${I(m.ic)}</span><span class="dt">${esc(m.t)}<small>${esc(m.s)}</small></span></button>`).join("")}</div></div>
+ ${di("settings","sliders","Settings")}
+ <div class="grow"></div>
+ <button class="acc" data-pg="profile"><div class="av" id="dAv">B</div><div><b id="dNm">—</b><small id="dHd"></small></div></button>`}
+function drawer(o){$("#drawer").classList.toggle("open",!!o)}
+function fillAccount(){const p=SB.profile||{},n=p.username||(SB.ses&&SB.ses.email)||"—";
+ $("#dNm").textContent=n;$("#dHd").textContent=p.handle?"@"+p.handle:(SB.ses&&SB.ses.email)||"";$("#dAv").textContent=(n[0]||"B").toUpperCase();
+ $("#dAdm").hidden=!isAdminUI()}
+
+/* =====================================================================
+   PAGINI (overlay cu săgeată înapoi)
+   ===================================================================== */
+const PG=[];
+function page(id,arg){const d=PAGES[id];if(!d)return;drawer(0);
+ const el=document.createElement("div");el.className="pg";
+ el.innerHTML=`<header class="ph"><button class="ib" data-act="pback" aria-label="Înapoi">${I("back")}</button><h1>${esc(d.t(arg))}</h1></header><div class="pb"></div>`;
+ document.body.appendChild(el);PG.push({el,id});d.render(el.querySelector(".pb"),arg);
+ requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add("in")))}
+function pageBack(){const p=PG.pop();if(!p)return false;p.el.classList.remove("in");setTimeout(()=>p.el.remove(),320);return true}
+function closePages(){while(PG.length)PG.pop().el.remove()}
+const row=o=>`<button class="row ${o.c||""}" ${o.pg?`data-pg="${o.pg}"`:""} ${o.act?`data-act="${o.act}"`:""}><span class="ri">${I(o.ic)}</span><span class="rt"><b>${esc(o.t)}</b>${o.s?`<small>${esc(o.s)}</small>`:""}</span>${o.v?`<span class="rv">${esc(o.v)}</span>`:""}<span class="ch">${I("chev")}</span></button>`;
+const trow=(k,ic,t,s)=>`<div class="row tg ${ST[k]?"on":""}" data-tg="${k}" role="switch"><span class="ri">${I(ic)}</span><span class="rt"><b>${t}</b><small>${s}</small></span><span class="sw"></span></div>`;
+const LANGS=[{c:"ro",n:"Română"}];
+const langName=()=>(LANGS.find(l=>l.c==ST.lang)||LANGS[0]).n;
+
+const PAGES={
+ profile:{t:()=>"Profile",render:el=>el.innerHTML=emptyPg("user","Profile")},
+ studio:{t:()=>"Pulse Studio",render:el=>el.innerHTML=emptyPg("wand","Pulse Studio")},
+ tracker:{t:()=>"HiBlue Tracker",render:el=>el.innerHTML=emptyPg("tracker","HiBlue Tracker")},
+ playback:{t:()=>"Playback & Reader",render:el=>el.innerHTML=emptyPg("play","Playback & Reader")},
+ storage:{t:()=>"Storage",render:el=>el.innerHTML=emptyPg("db","Storage")},
+ privacy:{t:()=>"Privacy",render:el=>el.innerHTML=emptyPg("lock","Privacy")},
+ lang:{t:()=>"Limba",render(el){el.innerHTML=`<div class="rows">${LANGS.map(l=>`<div class="row"><span class="ri">${I("globe")}</span><span class="rt"><b>${esc(l.n)}</b></span>${l.c==ST.lang?`<span class="ch">${I("check")}</span>`:""}</div>`).join("")}</div><p class="note">Alte limbi vor fi adăugate în update-urile viitoare.</p>`}},
+ about:{t:()=>"Despre HiBlue",render(el){el.innerHTML=`<div class="about"><div class="logo" data-mark></div>${WM("xl")}<p>Versiunea ${APP_VERSION}</p></div>`;paint()}},
+ settings:{t:()=>"Settings",render(el){const em=(SB.ses&&SB.ses.email)||"";
+  el.innerHTML=`<div class="grp"><div class="gt">Surse</div><div class="rows">${row({pg:"sources",ic:"key",t:"Sources",s:"API Keys"})}</div></div>
+  <div class="grp"><div class="gt">Aplicație</div><div class="rows">
+   ${row({pg:"lang",ic:"globe",t:"Limba",v:langName()})}
+   ${trow("haptics","vib","Haptics","Vibrații la atingere")}
+   ${trow("anim","bolt","Animations","Animații și tranziții")}
+   ${trow("notif","bell","Notifications","Notificări")}
+  </div></div>
+  <div class="grp"><div class="rows">${row({pg:"playback",ic:"play",t:"Playback & Reader"})}${row({pg:"storage",ic:"db",t:"Storage"})}${row({pg:"privacy",ic:"lock",t:"Privacy"})}</div></div>
+  <div class="grp"><div class="rows">${row({pg:"about",ic:"info",t:"Despre HiBlue"})}</div></div>
+  <div class="grp"><div class="gt">Cont</div><div class="rows"><div class="row"><span class="ri">${I("mail")}</span><span class="rt"><b>${esc(em)}</b><small>Autentificat</small></span></div>${row({act:"out",ic:"logout",t:"Deconectare",c:"danger"})}</div></div>`}}
+};
+MEDIA.forEach(m=>PAGES[m.id]={t:()=>m.t,render:el=>el.innerHTML=emptyPg(m.ic,m.t)});
+
+/* ---------- Sources (API Keys) – extensibil ----------
+   Adaugi o sursă într-o linie, ex.:
+   SOURCES.push({id:"tmdb",name:"TMDB",desc:"Filme și seriale",ph:"API key (v3)",scan:async key=>({ok:true,msg:"Scanat"})});  */
+const SOURCES=[];
+const srcKey=id=>LS.get("src."+id)||"";
+PAGES.sources={t:()=>"Sources",render(el){
+ if(!SOURCES.length){el.innerHTML=`<p class="note">Aici apar sursele (TMDB și altele), una sub alta: nume, câmp pentru cheie API și Rescanare.</p>`+emptyPg("key","Nicio sursă încă","API Keys");return}
+ el.innerHTML=SOURCES.map(s=>`<div class="src" data-s="${esc(s.id)}"><div class="sh"><b>${esc(s.name)}</b><span class="chip ${srcKey(s.id)?"ok":""}">${srcKey(s.id)?"Configurat":"Neconfigurat"}</span></div>${s.desc?`<p>${esc(s.desc)}</p>`:""}
+  <label class="fld"><span style="display:contents">${I("key")}</span><input type="password" value="${esc(srcKey(s.id))}" placeholder="${esc(s.ph||"API key")}" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+  <div class="sb"><button class="btn sm" data-sv="${esc(s.id)}">Salvează</button><button class="btn sm ghost" data-sc="${esc(s.id)}">${I("refresh")}<span>Rescanare</span></button></div><p class="ss"></p></div>`).join("")}};
+function srcSave(id){const c=document.querySelector(`.src[data-s="${id}"]`);if(!c)return;const v=c.querySelector("input").value.trim();LS.set("src."+id,v||null);
+ const ch=c.querySelector(".chip");ch.textContent=v?"Configurat":"Neconfigurat";ch.classList.toggle("ok",!!v);toast(v?"Cheie salvată":"Cheie ștearsă")}
+async function srcScan(id,btn){const s=SOURCES.find(x=>x.id==id),c=document.querySelector(`.src[data-s="${id}"]`);if(!s||!c)return;const ss=c.querySelector(".ss");
+ if(!s.scan){ss.textContent="Rescanarea nu e disponibilă încă pentru această sursă.";return}
+ srcSave(id);btn.classList.add("busy");ss.textContent="";
+ try{const r=await s.scan(srcKey(id));ss.textContent=(r&&r.msg)||"Gata"}catch(e){ss.textContent="Eroare: "+(e&&e.message||e)}
+ btn.classList.remove("busy")}
+
+/* ---------- Admin Panel (verificat și pe server: is_admin()) ---------- */
+const fmt=d=>d?new Date(d).toLocaleDateString("ro-RO"):"—";
+const usrHTML=u=>{const me=SB.ses&&u.id==SB.ses.uid,n=u.username||u.email||"?";
+ return `<div class="usr" data-id="${esc(u.id)}"><div class="av">${esc((n[0]||"?").toUpperCase())}</div><div class="ui"><b>${esc(u.username||"—")}${u.handle?` <i>@${esc(u.handle)}</i>`:""}</b><small>${esc(u.email||"")}</small><small>Creat ${fmt(u.created_at)} · ultima autentificare ${fmt(u.last_sign_in_at)}</small></div>${me?'<span class="chip ok">Tu</span>':`<button class="ib del" data-del="${esc(u.id)}" aria-label="Șterge">${I("trash")}</button>`}</div>`};
+function ask(t,s,ok){return new Promise(res=>{const m=document.createElement("div");m.className="mdl";
+ m.innerHTML=`<div class="mc"><h3>${esc(t)}</h3><p>${esc(s)}</p><div class="mb"><button class="btn sm ghost" data-r="0">Anulează</button><button class="btn sm dng" data-r="1">${esc(ok||"OK")}</button></div></div>`;
+ m.addEventListener("click",e=>{const b=e.target.closest("[data-r]");if(b||e.target==m){m.remove();res(!!b&&b.dataset.r=="1")}});document.body.appendChild(m)})}
+PAGES.admin={t:()=>"Admin Panel",render(el){
+ el.innerHTML=`<div class="stats">${[["Utilizatori","total"],["Noi 24h","new_24h"],["Noi 7 zile","new_7d"],["Activi 7 zile","active_7d"]].map(x=>`<div class="stat"><b data-k="${x[1]}">–</b><small>${x[0]}</small></div>`).join("")}</div>
+ <div class="gt" style="margin:20px 6px 8px">Utilizatori</div>
+ <label class="fld"><span style="display:contents">${I("search")}</span><input id="aQ" placeholder="Caută: nume, @utilizator, email" autocomplete="off"></label>
+ <p class="msg" id="aMsg"></p><div id="aList"></div><button class="btn sm ghost" id="aMore" style="width:100%;margin-top:6px" hidden>Mai mulți</button>`;
+ adminInit(el)}};
+async function adminInit(el){let off=0,q="",tm;const L=20,msg=el.querySelector("#aMsg"),list=el.querySelector("#aList"),more=el.querySelector("#aMore");
+ const err=r=>{const m=String(msgOf(r)).toLowerCase();msg.textContent=r.net?"Fără conexiune la internet":m.includes("forbidden")?"Acces interzis":(r.s==404||m.includes("could not find")||m.includes("schema cache"))?"Lipsește update0.0.1.sql în Supabase – rulează-l în SQL Editor.":"Eroare: "+msgOf(r)};
+ const stats=async()=>{const r=await rest("/rest/v1/rpc/admin_stats",{m:"POST",b:{}});if(!r.ok)return err(r);msg.textContent="";for(const k in r.j){const e=el.querySelector(`[data-k="${k}"]`);if(e)e.textContent=r.j[k]}};
+ const load=async reset=>{if(reset){off=0;list.innerHTML=""}const r=await rest("/rest/v1/rpc/admin_list_users",{m:"POST",b:{q:q,lim:L,skip:off}});if(!r.ok)return err(r);
+  const a=r.j||[];list.insertAdjacentHTML("beforeend",a.map(usrHTML).join(""));off+=a.length;more.hidden=a.length<L;if(reset&&!a.length)list.innerHTML='<p class="note">Niciun utilizator găsit.</p>'};
+ el.querySelector("#aQ").addEventListener("input",e=>{clearTimeout(tm);tm=setTimeout(()=>{q=e.target.value.trim();load(true)},350)});
+ more.addEventListener("click",()=>load(false));
+ el.addEventListener("click",async e=>{const b=e.target.closest("[data-del]");if(!b)return;
+  if(!await ask("Ștergi utilizatorul?","Contul și profilul vor fi șterse definitiv.","Șterge"))return;
+  const r=await rest("/rest/v1/rpc/admin_delete_user",{m:"POST",b:{target:b.dataset.del}});
+  if(!r.ok)return toast("Nu s-a putut șterge");const row=b.closest(".usr");if(row)row.remove();toast("Utilizator șters");stats()});
+ stats();load(true)}
+
+/* =====================================================================
+   NAVIGARE + API PUBLIC
+   ===================================================================== */
+function showApp(){$("#auth").classList.remove("on");$("#app").classList.add("on");resetShell();go("feed");fillAccount();loadProfile().then(fillAccount)}
+function showAuth(){closePages();$("#app").classList.remove("on");drawer(0);setMode("in");$("#pw").value="";note("");$("#auth").classList.add("on")}
+async function doOut(){if(!await ask("Te deconectezi?","Va trebui să te autentifici din nou.","Deconectare"))return;await signOut();showAuth();toast("Deconectat")}
+window.HB={go,page,rest,toast,esc,icon:I,haptic:hap,sources:SOURCES,settings:ST,user:()=>SB.profile,session:()=>SB.ses,rooms:Rooms,
+ notifResult(g){if(!g){ST.notif=false;LS.set("set",ST);applySet();$$('[data-tg="notif"]').forEach(e=>e.classList.remove("on"));toast("Notificările sunt blocate din setările telefonului")}},
+ back(){const m=$(".mdl");if(m){m.click();return true}
+  if($("#drawer").classList.contains("open")){drawer(0);return true}
+  if(PG.length){pageBack();return true}
+  var Rm=Rooms[cur];if(Rm&&Rm.back&&Rm.back())return true;
+  if($("#app").classList.contains("on")&&cur&&cur!="feed"){go("feed");return true}return false}};
+
+/* =====================================================================
+   AUTENTIFICARE
+   ===================================================================== */
+const HRE=/^[a-z0-9_.]{3,20}$/;let mode="in",busy=0,hSt="",hTm=0,hSeq=0;
+function note(t,info){const m=$("#msg");m.textContent=t||"";m.className="msg"+(info?" info":"")}
+function fail(t){const m=$("#msg");m.textContent=t;m.className="msg";void m.offsetWidth;m.classList.add("shake")}
+function setMode(m){mode=m;const up=m=="up";$("#authBox").classList.toggle("up",up);$$(".seg button").forEach(b=>b.classList.toggle("on",b.dataset.m==m));
+ $(".fup>div").toggleAttribute("inert",!up);$("#go").textContent=up?"Creează cont":"Intră";$("#pw").autocomplete=up?"new-password":"current-password";note("")}
+function setBusy(b){busy=b;$("#go").classList.toggle("busy",!!b)}
+function eyeSet(show){$("#pw").type=show?"text":"password";$("#eye").innerHTML=I(show?"eyeoff":"eye")}
+function hCheck(){const v=$("#hd").value,s=$("#hst");clearTimeout(hTm);hSt="";s.textContent="";s.className="st";
+ if(!v)return;if(!HRE.test(v)){s.textContent="3–20";s.className="st no";return}
+ const q=++hSeq;s.textContent="…";hTm=setTimeout(async()=>{const f=await handleFree(v);if(q!=hSeq)return;
+  if(f===null){hSt="";s.textContent="";return}hSt=f?"free":"taken";s.textContent=f?"✓ liber":"ocupat";s.className="st "+(f?"ok":"no")},450)}
+async function submit(){if(busy)return;const up=mode=="up",em=$("#em").value.trim(),pw=$("#pw").value,nm=$("#nm").value.trim(),hd=$("#hd").value.trim();let e="";
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em))e="Adresă de email invalidă";
+ else if(pw.length<6)e="Parola trebuie să aibă minim 6 caractere";
+ else if(up){if(nm.length<2)e="Numele trebuie să aibă minim 2 caractere";else if(!HRE.test(hd))e="Utilizator: 3–20 caractere (litere mici, cifre, _ sau .)";else if(hSt=="taken")e="Numele de utilizator este ocupat"}
+ if(e)return fail(e);
+ note("");setBusy(1);const r=up?await signUp(em,pw,nm,hd):await signIn(em,pw);setBusy(0);
+ if(r.err)return fail(r.err);
+ if(r.info){setMode("in");note(r.info,1);return}
+ showApp()}
+
+/* =====================================================================
+   EVENIMENTE + PORNIRE
+   ===================================================================== */
+document.addEventListener("click",e=>{const T=e.target;
+ if(T.closest(".tb,.ib,.btn,.seg button,.row,.di,.acc"))hap(0);
+ const m=T.closest(".seg button");if(m){setMode(m.dataset.m);return}
+ const t=T.closest(".tb");if(t){go(t.dataset.id);return}
+ const tg=T.closest("[data-tg]");if(tg){toggleSet(tg.dataset.tg,tg);return}
+ const sb=T.closest("[data-sub]");if(sb){$("#sub-"+sb.dataset.sub).classList.toggle("open");sb.classList.toggle("open");return}
+ const g=T.closest("[data-pg]");if(g){page(g.dataset.pg);return}
+ const sv=T.closest("[data-sv]");if(sv){srcSave(sv.dataset.sv);return}
+ const sc=T.closest("[data-sc]");if(sc){srcScan(sc.dataset.sc,sc);return}
+ const a=T.closest("[data-act]");if(!a)return;
+ switch(a.dataset.act){
+  case"menu":drawer(1);break;
+  case"close":drawer(0);break;
+  case"pback":pageBack();break;
+  case"bell":case"music":break;       // goale deocamdată
+  case"out":doOut();break}});
+$("#go").addEventListener("click",submit);
+$("#eye").addEventListener("click",()=>eyeSet($("#pw").type=="password"));
+$("#hd").addEventListener("input",e=>{e.target.value=e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g,"").slice(0,20);hCheck()});
+["em","pw","nm","hd"].forEach(id=>$("#"+id).addEventListener("keydown",e=>{if(e.key=="Enter"){e.preventDefault();submit()}}));
+document.addEventListener("focusin",e=>{if(e.target.matches&&e.target.matches("input"))setTimeout(()=>{try{e.target.scrollIntoView({block:"center",behavior:"smooth"})}catch(x){}},320)});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&SB.ses)ensure().then(s=>{if(s=="none"&&$("#app").classList.contains("on")){showAuth();toast("Sesiunea a expirat")}})});
+
+(async function start(){
+ applySet();paint();buildShell();buildDrawer();applySet();eyeSet(false);setMode("in");
+ const boot=(async()=>{if(!SB.ses)return"auth";const s=await ensure();return s=="none"?"auth":"app"})();
+ const [,dest]=await Promise.all([sleep(ST.anim?2900:600),boot]);
+ if(dest=="app")showApp();else showAuth();
+ $("#splash").classList.add("out");setTimeout(()=>$("#splash").remove(),800)})();
+</script></body></html>
