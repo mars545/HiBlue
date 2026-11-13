@@ -1,0 +1,700 @@
+=== FILE: README.md ===
+# HiBlue – schelet v0.1
+
+Autentificare / înregistrare (fără Guest) + 5 camere goale: Feed · My Blue · Games · Chat · Community.
+Header: hamburger · HiBlue (cu Blue pe litera B) · [search – ascuns deocamdată] · notificări · player muzical.
+
+## 1. Imaginile tale
+Pune PNG-urile în  app/src/main/assets/img/  cu numele:
+- icon.png        iconița „b”
+- logo.png        logo-ul complet (corectat HiBlue)
+- mascot.png      ursulețul cu fundal (ecranul de autentificare)
+- mascot-cut.png  ursulețul FĂRĂ fundal (PNG transparent) – stă pe litera B din header
+Dacă lipsesc, aplicația desenează variante de rezervă și funcționează oricum.
+
+Iconița aplicației (launcher): include deja o replică vectorială a lui „b”.
+Ca să o înlocuiești cu PNG-ul tău: șterge folderele mipmap-anydpi și mipmap-anydpi-v26 din res/
+și pune ic_launcher.png (192×192) în res/mipmap-xxxhdpi/.
+
+## 2. Supabase (o singură dată)
+1. Dashboard → SQL Editor → lipește tot din supabase/hiblue.sql → Run.
+2. Authentication → Sign In / Providers: Email = ON. „Confirm email” – ca tine (ON = primești mail de confirmare, OFF = intri direct la test).
+   Anonymous sign-ins = OFF (nu mai există Guest).
+3. Cheia și URL-ul sunt în app/src/main/assets/index.html, la începutul scriptului (const CFG). Acum sunt cele din Pulse;
+   dacă faci un proiect Supabase nou, schimbă-le acolo.
+
+## 3. APK (GitHub, fără instalări)
+Exact ca la Pulse: repository nou → încarci TOATE fișierele → Actions → „Build APK” → Artifacts → HiBlue-apk.
+Dacă folderul .github nu s-a încărcat: Add file → Create new file → nume .github/workflows/build.yml → conținutul din build-yml.txt.
+Aplicația are alt applicationId (ro.lingurar.hiblue), deci se instalează lângă Pulse.
+
+## 4. Cum umplem camerele
+În index.html, secțiunile  /* ===== ROOM: ... ===== */  sunt locul fiecărei camere.
+O cameră = Rooms.feed={mount(el){...}, show(){}, hide(){}}.  Căutarea din header: pune search:true la camera dorită în ROOMS.
+Funcții gata pentru camere: HB.rest(...) (cereri Supabase autentificate), HB.user(), HB.toast(), HB.go(id).
+=== FILE: build-yml.txt ===
+name: Build APK
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: 17}
+      - uses: gradle/actions/setup-gradle@v3
+        with: {gradle-version: 8.7}
+      - run: gradle assembleDebug
+      - uses: actions/upload-artifact@v4
+        with: {name: HiBlue-apk, path: app/build/outputs/apk/debug/*.apk}
+=== FILE: .github/workflows/build.yml ===
+name: Build APK
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: 17}
+      - uses: gradle/actions/setup-gradle@v3
+        with: {gradle-version: 8.7}
+      - run: gradle assembleDebug
+      - uses: actions/upload-artifact@v4
+        with: {name: HiBlue-apk, path: app/build/outputs/apk/debug/*.apk}
+=== FILE: build.gradle.kts ===
+plugins{
+ id("com.android.application") version "8.5.2" apply false
+ id("org.jetbrains.kotlin.android") version "1.9.24" apply false
+}
+=== FILE: gradle.properties ===
+org.gradle.jvmargs=-Xmx2g
+android.useAndroidX=true
+=== FILE: settings.gradle.kts ===
+pluginManagement{repositories{google();mavenCentral();gradlePluginPortal()}}
+dependencyResolutionManagement{repositories{google();mavenCentral()}}
+rootProject.name="HiBlue"
+include(":app")
+=== FILE: app/build.gradle.kts ===
+plugins{id("com.android.application");id("org.jetbrains.kotlin.android")}
+android{
+ namespace="ro.lingurar.hiblue"
+ compileSdk=34
+ defaultConfig{applicationId="ro.lingurar.hiblue";minSdk=24;targetSdk=34;versionCode=1;versionName="0.1.0"}
+ buildTypes{
+  release{
+   isMinifyEnabled=true
+   isShrinkResources=true
+   proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"),"proguard-rules.pro")
+   signingConfig=signingConfigs.getByName("debug")
+  }
+ }
+ compileOptions{sourceCompatibility=JavaVersion.VERSION_17;targetCompatibility=JavaVersion.VERSION_17}
+ kotlinOptions{jvmTarget="17"}
+}
+=== FILE: app/proguard-rules.pro ===
+# HiBlue – reguli R8/ProGuard (build release)
+-keepattributes Signature,*Annotation*
+-dontwarn org.json.**
+=== FILE: app/src/main/AndroidManifest.xml ===
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ <uses-permission android:name="android.permission.INTERNET"/>
+ <uses-permission android:name="android.permission.VIBRATE"/>
+ <application android:label="HiBlue" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:theme="@style/Theme.HiBlue" android:enableOnBackInvokedCallback="false" android:allowBackup="false">
+  <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait" android:windowSoftInputMode="adjustResize" android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout">
+   <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+  </activity>
+ </application>
+</manifest>
+=== FILE: app/src/main/java/ro/lingurar/hiblue/MainActivity.kt ===
+package ro.lingurar.hiblue
+
+import android.app.Activity
+import android.content.Intent
+import android.graphics.Color
+import android.net.Uri
+import android.os.Bundle
+import android.webkit.*
+import android.widget.Toast
+
+class MainActivity : Activity() {
+    private lateinit var wv: WebView
+    private var lastBack = 0L
+
+    override fun onCreate(b: Bundle?) {
+        super.onCreate(b)
+        val bg = Color.parseColor("#05050F")
+        window.statusBarColor = bg
+        window.navigationBarColor = bg
+        wv = WebView(this)
+        setContentView(wv)
+        wv.setBackgroundColor(bg)
+        wv.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            allowFileAccess = false      // asset-urile (file:///android_asset) merg oricum
+            allowContentAccess = false
+            textZoom = 100               // interfața nu se strică la fontul mare din telefon
+            setSupportZoom(false)
+            mediaPlaybackRequiresUserGesture = false
+        }
+        wv.overScrollMode = android.view.View.OVER_SCROLL_NEVER
+        wv.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(v: WebView?, r: WebResourceRequest?): Boolean {
+                val u = r?.url?.toString() ?: return false
+                if (u.startsWith("file:///android_asset") || u.startsWith("about:") || u.startsWith("data:") || u.startsWith("blob:")) return false
+                try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u))) } catch (e: Exception) {}
+                return true
+            }
+        }
+        wv.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(m: ConsoleMessage?): Boolean {
+                m?.let { android.util.Log.d("HiBlueJS", "[${it.messageLevel()}] ${it.message()} @${it.sourceId()}:${it.lineNumber()}") }
+                return true
+            }
+        }
+        if (b != null) wv.restoreState(b) else wv.loadUrl("file:///android_asset/index.html")
+    }
+
+    override fun onSaveInstanceState(o: Bundle) { super.onSaveInstanceState(o); wv.saveState(o) }
+
+    // Back: întâi lasă interfața să decidă (închide drawer-ul / revine la Feed), apoi dublu-back pentru ieșire
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        wv.evaluateJavascript("(window.HB&&HB.back)?HB.back():false") { r ->
+            if (r == "true") return@evaluateJavascript
+            val now = System.currentTimeMillis()
+            if (now - lastBack < 2000) finish()
+            else { lastBack = now; Toast.makeText(this, "Apasă încă o dată pentru a ieși", Toast.LENGTH_SHORT).show() }
+        }
+    }
+
+    override fun onDestroy() { try { wv.destroy() } catch (e: Exception) {}; super.onDestroy() }
+}
+=== FILE: app/src/main/res/values/colors.xml ===
+<?xml version="1.0" encoding="utf-8"?>
+<resources><color name="hb_bg">#05050F</color></resources>
+=== FILE: app/src/main/res/values/themes.xml ===
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+ <style name="Theme.HiBlue" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+  <item name="android:windowBackground">@color/hb_bg</item>
+  <item name="android:statusBarColor">@color/hb_bg</item>
+  <item name="android:navigationBarColor">@color/hb_bg</item>
+ </style>
+</resources>
+=== FILE: app/src/main/res/values-v31/themes.xml ===
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+ <style name="Theme.HiBlue" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+  <item name="android:windowBackground">@color/hb_bg</item>
+  <item name="android:statusBarColor">@color/hb_bg</item>
+  <item name="android:navigationBarColor">@color/hb_bg</item>
+  <item name="android:windowSplashScreenBackground">@color/hb_bg</item>
+ </style>
+</resources>
+=== FILE: app/src/main/res/drawable/ic_launcher_bg.xml ===
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:startX="0" android:startY="0" android:endX="108" android:endY="108">
+                <item android:offset="0" android:color="#FF120A2E"/>
+                <item android:offset="1" android:color="#FF05050F"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>
+=== FILE: app/src/main/res/drawable/ic_launcher_fg.xml ===
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- bara literei b -->
+    <path android:pathData="M36,30h0a6,6 0 0 1 6,6v34a6,6 0 0 1 -6,6h0a6,6 0 0 1 -6,-6v-34a6,6 0 0 1 6,-6z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:startX="30" android:startY="30" android:endX="42" android:endY="76">
+                <item android:offset="0" android:color="#FFE879F9"/>
+                <item android:offset="1" android:color="#FF6D28D9"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- buclă cu triunghi play decupat -->
+    <path android:fillType="evenOdd" android:pathData="M58,50a16,16 0 1 1 0,32a16,16 0 1 1 0,-32zM53,57v18l15,-9z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:startX="42" android:startY="82" android:endX="74" android:endY="50">
+                <item android:offset="0" android:color="#FF8B5CF6"/>
+                <item android:offset="1" android:color="#FF22D3EE"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- sclipirea -->
+    <path android:fillColor="#FFE9D5FF" android:pathData="M76,28l2,6l6,2l-6,2l-2,6l-2,-6l-6,-2l6,-2z"/>
+</vector>
+=== FILE: app/src/main/res/mipmap-anydpi/ic_launcher.xml ===
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_launcher_bg"/>
+    <item android:drawable="@drawable/ic_launcher_fg"/>
+</layer-list>
+=== FILE: app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml ===
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_bg"/>
+    <foreground android:drawable="@drawable/ic_launcher_fg"/>
+    <monochrome android:drawable="@drawable/ic_launcher_fg"/>
+</adaptive-icon>
+=== FILE: app/src/main/assets/img/_pune_aici_imaginile.txt ===
+Pune aici imaginile tale (PNG), cu exact aceste nume:
+  icon.png        - iconița "b" (pătratul cu colțuri rotunjite)
+  logo.png        - logo-ul complet (corectat HiBlue) - pregătit pentru update-urile viitoare
+  mascot.png      - ursulețul Blue (cu fundal) - folosit în ecranul de autentificare
+  mascot-cut.png  - ursulețul FĂRĂ fundal (PNG transparent) - stă pe litera B din HiBlue (header)
+Dacă lipsesc, aplicația afișează automat variante desenate în cod, deci nu crapă.
+=== FILE: app/src/main/assets/index.html ===
+<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#05050f"><title>HiBlue</title>
+<style>
+:root{--bg:#05050f;--sf:rgba(255,255,255,.055);--sf2:rgba(255,255,255,.1);--ln:rgba(255,255,255,.1);--tx:#f5f5ff;--mu:#9d9dc4;--v:#8b5cf6;--bad:#ff6b8a;--ok:#34d399;--g:linear-gradient(135deg,#c084fc 0%,#6366f1 48%,#22d3ee 100%);--hh:58px;--nh:68px;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font:15px/1.4 ui-rounded,"SF Pro Rounded",system-ui,Roboto,sans-serif;-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input{-webkit-user-select:text;user-select:text}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-action:manipulation}
+input{font:inherit;color:inherit;outline:0;border:0;background:none;width:100%;min-width:0}
+img{-webkit-user-drag:none}
+.aurora{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.aurora i{position:absolute;border-radius:50%;filter:blur(72px);opacity:.5;animation:drift 18s ease-in-out infinite alternate}
+.aurora i:nth-child(1){width:330px;height:330px;background:#6d28d9;top:-100px;left:-110px}
+.aurora i:nth-child(2){width:300px;height:300px;background:#1d4ed8;bottom:-90px;right:-110px;animation-delay:-6s}
+.aurora i:nth-child(3){width:220px;height:220px;background:#0891b2;top:44%;left:56%;opacity:.25;animation-delay:-12s}
+@keyframes drift{to{transform:translate(40px,50px) scale(1.15)}}
+@keyframes pop{from{opacity:0;transform:scale(.3) rotate(-18deg)}60%{transform:scale(1.08) rotate(3deg)}to{opacity:1;transform:none}}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes pulse{50%{opacity:.55;transform:scale(1.12)}}
+@keyframes bob{50%{transform:translateX(-50%) translateY(-1.5px) rotate(4deg)}}
+@keyframes drop{0%{opacity:0;transform:translateX(-50%) translateY(-46px) scale(.5)}60%{opacity:1;transform:translateX(-50%) translateY(3px) scale(1.06)}100%{opacity:1;transform:translateX(-50%)}}
+@keyframes float{50%{transform:translateY(-6px)}}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ---------- logo cuvânt HiBlue + mascota pe literă ---------- */
+.wm{display:inline-flex;align-items:baseline;font-weight:800;letter-spacing:-.04em;font-size:21px;line-height:1;white-space:nowrap}
+.wm b{color:#fff;font-weight:800}
+.wm em{font-style:normal;display:inline-flex;background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent}
+.wm .B{position:relative;display:inline-block}
+.wm .bear{position:absolute;left:46%;bottom:80%;width:.95em;transform:translateX(-50%);animation:bob 3.6s ease-in-out infinite;pointer-events:none}
+.wm .bear>*{display:block;width:100%;height:auto}
+.wm.xl{font-size:46px}
+.rnd{border-radius:50%}
+/* ---------- splash ---------- */
+#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);transition:opacity .6s,visibility .6s}
+#splash.out{opacity:0;visibility:hidden}
+.sp-mark{position:relative;width:116px;height:116px;animation:pop .95s cubic-bezier(.2,1.3,.4,1) both}
+.sp-mark:before{content:"";position:absolute;inset:-46px;border-radius:50%;background:radial-gradient(closest-side,rgba(139,92,246,.6),rgba(34,211,238,.12) 70%,transparent);animation:pulse 2.4s ease-in-out infinite}
+.sp-mark>*{position:relative;width:100%;height:100%;object-fit:contain;display:block}
+.sp-wm{margin-top:46px;opacity:0;animation:rise .8s .8s both}
+.sp-wm .bear{animation:drop 1s 1.5s both,bob 3.6s 2.5s ease-in-out infinite}
+/* ---------- autentificare ---------- */
+#auth{position:fixed;inset:0;z-index:50;display:none;overflow-y:auto;padding:calc(var(--sat) + 22px) 20px calc(var(--sab) + 24px)}
+#auth.on{display:block}
+.au{max-width:420px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;justify-content:center}
+.au-top{text-align:center;margin-bottom:22px;animation:rise .7s both}
+.mascot{width:104px;height:104px;margin:0 auto 14px;border-radius:32px;overflow:hidden;box-shadow:0 0 0 1px var(--ln),0 12px 50px rgba(139,92,246,.55);animation:float 4.5s ease-in-out infinite;background:#0b0b22}
+.mascot>*{width:100%;height:100%;object-fit:cover;display:block}
+.tag{color:var(--mu);margin-top:10px;font-size:14px}
+.card{background:linear-gradient(160deg,rgba(255,255,255,.085),rgba(255,255,255,.035));border:1px solid var(--ln);border-radius:28px;padding:20px;-webkit-backdrop-filter:blur(26px);backdrop-filter:blur(26px);box-shadow:0 24px 70px rgba(0,0,0,.5);animation:rise .7s .12s both}
+.seg{position:relative;display:flex;background:rgba(0,0,0,.35);border:1px solid var(--ln);border-radius:16px;padding:4px;margin-bottom:18px}
+.seg .th{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:12px;background:var(--g);box-shadow:0 6px 20px rgba(99,102,241,.45);transition:transform .35s cubic-bezier(.3,1.2,.4,1)}
+.seg button{position:relative;flex:1;padding:10px 0;font-weight:700;font-size:14px;color:var(--mu);transition:color .25s}
+.seg button.on{color:#fff}
+.up .seg .th{transform:translateX(100%)}
+.fup{display:grid;grid-template-rows:0fr;transition:grid-template-rows .38s ease}
+.fup>div{min-height:0;overflow:hidden}
+.up .fup{grid-template-rows:1fr}
+.fld{position:relative;display:flex;align-items:center;gap:10px;height:54px;padding:0 14px;margin-bottom:12px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid var(--ln);color:var(--mu);transition:.2s}
+.fld:focus-within{border-color:var(--v);color:#c4b5fd;box-shadow:0 0 0 4px rgba(139,92,246,.18);background:rgba(255,255,255,.08)}
+.fld svg,.ib svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.fld input{color:var(--tx);font-size:15.5px}
+.fld input::placeholder{color:#7b7ba3}
+.fld .eye{display:grid;place-items:center;width:34px;height:34px;margin-right:-8px;color:var(--mu)}
+.fld .st{font-size:13px;font-weight:700;white-space:nowrap}
+.st.ok{color:var(--ok)}.st.no{color:var(--bad)}
+.hint{font-size:12px;color:var(--mu);margin:-4px 4px 12px}
+.msg{min-height:20px;font-size:13.5px;margin:2px 4px 10px;color:var(--bad)}
+.msg.info{color:#a5f3fc}
+.msg.shake{animation:shake .4s}
+.btn{position:relative;width:100%;height:54px;border-radius:16px;background:var(--g);font-weight:800;font-size:16px;color:#fff;box-shadow:0 10px 30px rgba(99,102,241,.5);transition:transform .15s,opacity .2s}
+.btn:active{transform:scale(.97)}
+.btn.busy{opacity:.8;pointer-events:none;color:transparent}
+.btn.busy:after{content:"";position:absolute;inset:0;margin:auto;width:22px;height:22px;border-radius:50%;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;animation:spin .7s linear infinite}
+/* ---------- aplicația ---------- */
+#app{position:fixed;inset:0;z-index:10;display:none;flex-direction:column}
+#app.on{display:flex;animation:rise .5s both}
+.hd{position:relative;z-index:20;flex:none;height:calc(var(--hh) + var(--sat));padding:var(--sat) 8px 0 6px;display:flex;align-items:center;gap:2px;background:linear-gradient(rgba(5,5,15,.92),rgba(5,5,15,.62));-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,.06)}
+.ib{position:relative;flex:none;width:42px;height:42px;border-radius:14px;display:grid;place-items:center;color:#d4d4fa;transition:.18s}
+.ib:active{background:var(--sf2);transform:scale(.9)}
+.ib svg{width:23px;height:23px;stroke-width:1.9}
+.ib .dot{position:absolute;top:9px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--g);box-shadow:0 0 0 2px var(--bg)}
+.hd .wm{margin-left:4px;margin-top:4px}
+.mid{flex:1;min-width:0;display:flex;justify-content:flex-end;padding:0 6px}
+.srch{display:flex;align-items:center;gap:8px;width:100%;max-width:190px;height:36px;padding:0 12px;border-radius:18px;background:var(--sf);border:1px solid var(--ln);color:var(--mu);animation:rise .3s both}
+.srch[hidden]{display:none}
+.srch svg{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.srch input{font-size:14px;color:var(--tx)}
+#stage{position:relative;flex:1;min-height:0}
+.room{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding-bottom:calc(var(--nh) + 30px + var(--sab));opacity:0;visibility:hidden;transform:translateY(10px);transition:opacity .28s,transform .28s,visibility .28s}
+.room.on{opacity:1;visibility:visible;transform:none}
+.empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:var(--mu);padding:0 40px}
+.empty .ring{width:84px;height:84px;border-radius:28px;display:grid;place-items:center;background:var(--sf);border:1px solid var(--ln);box-shadow:0 0 46px rgba(99,102,241,.3);margin-bottom:6px}
+.empty .ring svg{width:36px;height:36px;fill:none;stroke:url(#gr);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.empty h2{font-size:19px;color:var(--tx);letter-spacing:-.3px}
+.empty p{font-size:13px}
+.nav{position:fixed;z-index:30;left:12px;right:12px;bottom:calc(10px + var(--sab));height:var(--nh);display:flex;border-radius:28px;background:rgba(14,14,34,.74);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid var(--ln);box-shadow:0 14px 44px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.07)}
+.tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:700;letter-spacing:.1px;color:var(--mu);transition:color .25s}
+.tb .ic{width:48px;height:30px;border-radius:15px;display:grid;place-items:center;transition:.35s cubic-bezier(.3,1.3,.4,1)}
+.tb svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:.3s}
+.tb:active .ic{transform:scale(.9)}
+.tb.on{color:#fff}
+.tb.on .ic{background:rgba(139,92,246,.2);box-shadow:0 0 24px rgba(99,102,241,.45);transform:translateY(-1px)}
+.tb.on svg{stroke:url(#gr)}
+/* ---------- drawer ---------- */
+.shade{position:fixed;inset:0;z-index:60;background:rgba(2,2,10,.6);opacity:0;visibility:hidden;transition:.3s}
+.dr{position:fixed;z-index:61;top:0;bottom:0;left:0;width:min(82%,320px);display:flex;flex-direction:column;padding:calc(var(--sat) + 18px) 16px calc(var(--sab) + 16px);background:linear-gradient(180deg,#0d0d26,#07071a);border-right:1px solid var(--ln);box-shadow:20px 0 60px rgba(0,0,0,.6);transform:translateX(-102%);transition:transform .36s cubic-bezier(.3,.9,.3,1)}
+.drawer.open .shade{opacity:1;visibility:visible}
+.drawer.open .dr{transform:none}
+.dr .grow{flex:1}
+.acc{display:flex;align-items:center;gap:12px;padding:12px;border-radius:18px;background:var(--sf);border:1px solid var(--ln)}
+.acc .av{width:42px;height:42px;border-radius:14px;background:var(--g);display:grid;place-items:center;font-weight:800;font-size:18px;flex:none}
+.acc b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acc small{color:var(--mu);font-size:12px}
+.acc div{min-width:0}
+.out{margin-top:10px;width:100%;height:44px;border-radius:14px;color:#ffb4c4;background:rgba(255,107,138,.09);border:1px solid rgba(255,107,138,.22);font-weight:700;font-size:14px}
+.out:active{transform:scale(.98)}
+.toast{position:fixed;z-index:200;left:50%;bottom:calc(var(--nh) + 36px + var(--sab));transform:translate(-50%,20px);padding:11px 18px;border-radius:16px;background:rgba(20,20,48,.95);border:1px solid var(--ln);font-size:13.5px;opacity:0;transition:.3s;pointer-events:none;max-width:86%;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<linearGradient id="gr" gradientUnits="userSpaceOnUse" x1="2" y1="2" x2="22" y2="22"><stop offset="0" stop-color="#c084fc"/><stop offset=".55" stop-color="#6366f1"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+<linearGradient id="mkP" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e879f9"/><stop offset="1" stop-color="#6d28d9"/></linearGradient>
+<linearGradient id="mkB" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+</defs></svg>
+<div class="aurora"><i></i><i></i><i></i></div>
+
+<div id="splash"><div class="sp-mark" data-mark></div><div class="sp-wm" data-wm="xl"></div></div>
+
+<section id="auth"><div class="au" id="authBox">
+ <div class="au-top"><div class="mascot" data-bear></div><div data-wm="xl"></div><p class="tag">Bine ai venit! Intră sau creează-ți contul.</p></div>
+ <div class="card">
+  <div class="seg"><i class="th"></i><button class="on" data-m="in">Autentificare</button><button data-m="up">Înregistrare</button></div>
+  <div class="fup"><div>
+   <label class="fld"><span data-i="user"></span><input id="nm" placeholder="Nume afișat" maxlength="32" autocomplete="nickname" autocapitalize="words"></label>
+   <label class="fld"><span data-i="at"></span><input id="hd" placeholder="utilizator (unic)" maxlength="20" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"><span class="st" id="hst"></span></label>
+   <p class="hint">Litere mici, cifre, _ sau . (3–20 caractere)</p>
+  </div></div>
+  <label class="fld"><span data-i="mail"></span><input id="em" type="email" inputmode="email" placeholder="Email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false"></label>
+  <label class="fld"><span data-i="lock"></span><input id="pw" type="password" placeholder="Parolă (minim 6 caractere)" autocomplete="current-password"><button type="button" class="eye" id="eye" aria-label="Arată parola"></button></label>
+  <p class="msg" id="msg"></p>
+  <button class="btn" id="go">Intră</button>
+ </div>
+</div></section>
+
+<div id="app">
+ <header class="hd">
+  <button class="ib" data-act="menu" aria-label="Meniu" data-i="menu"></button>
+  <div data-wm></div>
+  <div class="mid"><div class="srch" id="srch" hidden><span data-i="search" style="display:contents"></span><input placeholder="Caută…" aria-label="Caută"></div></div>
+  <button class="ib" data-act="bell" aria-label="Notificări"><span data-i="bell" style="display:contents"></span><i class="dot" id="bdot" hidden></i></button>
+  <button class="ib" data-act="music" aria-label="Player muzical" data-i="music"></button>
+ </header>
+ <main id="stage"></main>
+ <nav class="nav" id="nav"></nav>
+</div>
+
+<div class="drawer" id="drawer"><div class="shade" data-act="close"></div>
+ <aside class="dr"><div class="grow"></div>
+  <div class="acc"><div class="av" id="dAv">B</div><div><b id="dNm">—</b><small id="dHd"></small></div></div>
+  <button class="out" data-act="out">Deconectare</button>
+ </aside></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   HiBlue · skeleton v0.1  —  Autentificare + 5 camere goale
+   Camerele se umplu pe rând: caută secțiunile "ROOM: ..." mai jos.
+   ===================================================================== */
+const CFG={url:"https://buuqcvipisalolbutzph.supabase.co",key:"sb_publishable_E_FWG55w_rWieyXnHhOOYg_ArYIdGzS"};
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---------- iconițe ---------- */
+const P={
+ menu:'<path d="M4 7h16"/><path d="M4 12h11"/><path d="M4 17h6"/>',
+ bell:'<path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 1.5h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>',
+ music:'<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
+ search:'<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/>',
+ feed:'<rect x="3.5" y="4" width="17" height="7" rx="2.5"/><rect x="3.5" y="13.5" width="17" height="6.5" rx="2.5"/>',
+ me:'<circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20c.9-3.6 3.7-5.6 7.2-5.6s6.3 2 7.2 5.6"/>',
+ games:'<path d="M7 7.5h10a4 4 0 0 1 3.9 3.3l.7 4.2a2.6 2.6 0 0 1-4.5 2.1L15.5 15h-7l-2.1 2.1A2.6 2.6 0 0 1 1.9 15l.7-4.2A4 4 0 0 1 7 7.5z"/><path d="M8 10.5v3M6.5 12h3"/><circle cx="15.5" cy="11.2" r=".7" fill="currentColor"/><circle cx="17.6" cy="13" r=".7" fill="currentColor"/>',
+ chat:'<path d="M20.5 12a8 8 0 0 1-11.7 7.1L4 20.5l1.4-4.5A8 8 0 1 1 20.5 12z"/>',
+ comm:'<circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9.5" r="2.5"/><path d="M16.5 14.6c2.6-.2 4.4 1.3 4.9 4"/>',
+ user:'<circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20c.9-3.6 3.7-5.6 7.2-5.6s6.3 2 7.2 5.6"/>',
+ at:'<circle cx="12" cy="12" r="3.5"/><path d="M15.5 12v1.3a2.2 2.2 0 0 0 4.4 0V12a8 8 0 1 0-3.2 6.4"/>',
+ mail:'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7.5l8 6 8-6"/>',
+ lock:'<rect x="5" y="10.5" width="14" height="9.5" rx="3"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
+ eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
+ eyeoff:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/><path d="M4 4l16 16"/>'
+};
+const I=n=>`<svg viewBox="0 0 24 24">${P[n]}</svg>`;
+
+/* ---------- imagini cu rezervă desenată (dacă lipsesc PNG-urile) ---------- */
+const FB={
+ mark:'<svg viewBox="0 0 100 100"><rect x="24" y="12" width="18" height="66" rx="9" fill="url(#mkP)"/><path fill-rule="evenodd" fill="url(#mkB)" d="M56 38a26 26 0 1 1 0 52a26 26 0 1 1 0-52zM47 52v24l22-12z"/><path fill="#e9d5ff" d="M80 10l3 9 9 3-9 3-3 9-3-9-9-3 9-3z"/></svg>',
+ bear:'<svg viewBox="0 0 64 64"><circle cx="14" cy="15" r="10" fill="#9a5b2f"/><circle cx="50" cy="15" r="10" fill="#9a5b2f"/><circle cx="14" cy="15" r="5" fill="#e8a58f"/><circle cx="50" cy="15" r="5" fill="#e8a58f"/><circle cx="32" cy="35" r="24" fill="#b4693a"/><rect x="20" y="20" width="12" height="10" rx="2" fill="#8a5330" transform="rotate(-12 26 25)"/><ellipse cx="32" cy="43" rx="11" ry="8" fill="#f0b79f"/><circle cx="24" cy="32" r="2.7" fill="#111"/><circle cx="40" cy="32" r="2.7" fill="#111"/><ellipse cx="32" cy="39" rx="3.2" ry="2.4" fill="#222"/><path d="M28 44q4 3 8 0" stroke="#222" stroke-width="1.4" fill="none" stroke-linecap="round"/><path d="M32 58l-9-4v8zM32 58l9-4v8z" fill="#7c3aed"/><circle cx="32" cy="58" r="2.6" fill="#3b82f6"/></svg>'
+};
+function fbk(i){const n=i.dataset.n2;if(n){i.dataset.n2="";i.src="img/"+n;i.classList.add("rnd");return}i.outerHTML=FB[i.dataset.fb]}
+const BEAR_S='<img src="img/mascot-cut.png" data-n2="mascot.png" data-fb="bear" onerror="fbk(this)" alt="" draggable="false">';
+const BEAR_L='<img src="img/mascot.png" data-fb="bear" onerror="fbk(this)" alt="" draggable="false">';
+const MARK='<img src="img/icon.png" data-fb="mark" onerror="fbk(this)" alt="" draggable="false">';
+const WM=x=>`<span class="wm ${x||""}"><b>Hi</b><em><span class="B">B<span class="bear">${BEAR_S}</span></span>lue</em></span>`;
+function paint(root){root=root||document;
+ root.querySelectorAll("[data-i]").forEach(e=>{if(!e.innerHTML)e.innerHTML=I(e.dataset.i)});
+ root.querySelectorAll("[data-wm]").forEach(e=>{if(!e.innerHTML)e.innerHTML=WM(e.dataset.wm)});
+ root.querySelectorAll("[data-mark]").forEach(e=>{if(!e.innerHTML)e.innerHTML=MARK});
+ root.querySelectorAll("[data-bear]").forEach(e=>{if(!e.innerHTML)e.innerHTML=BEAR_L})}
+
+let _tt;function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(_tt);_tt=setTimeout(()=>e.classList.remove("on"),2600)}
+
+/* =====================================================================
+   SUPABASE (REST direct, fără librării)
+   ===================================================================== */
+const LS={get(k){try{return JSON.parse(localStorage.getItem("hb."+k))}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem("hb."+k):localStorage.setItem("hb."+k,JSON.stringify(v))}catch(e){}}};
+const SB={ses:LS.get("ses"),profile:LS.get("profile")};
+async function http(path,o){o=o||{};const c=new AbortController(),t=setTimeout(()=>c.abort(),15000);
+ try{const h=Object.assign({apikey:CFG.key,"Content-Type":"application/json"},o.h||{});if(o.auth&&SB.ses)h.Authorization="Bearer "+SB.ses.access_token;
+  const r=await fetch(CFG.url+path,{method:o.m||"GET",headers:h,body:o.b?JSON.stringify(o.b):undefined,signal:c.signal});let j=null;try{j=await r.json()}catch(e){}return{ok:r.ok,s:r.status,j}}
+ catch(e){return{ok:false,s:0,net:true,j:null}}finally{clearTimeout(t)}}
+const msgOf=r=>(r&&r.j&&(r.j.msg||r.j.message||r.j.error_description||r.j.error))||("HTTP "+(r&&r.s));
+function setSes(j){const u=j.user||{};SB.ses={access_token:j.access_token,refresh_token:j.refresh_token,exp:j.expires_at?j.expires_at*1000:Date.now()+(j.expires_in||3600)*1000,uid:u.id||(SB.ses&&SB.ses.uid)||"",email:u.email||(SB.ses&&SB.ses.email)||""};LS.set("ses",SB.ses)}
+function clearSes(){SB.ses=null;SB.profile=null;LS.set("ses",null);LS.set("profile",null)}
+async function ensure(){if(!SB.ses)return"none";if(SB.ses.exp-60000>Date.now())return"ok";
+ const r=await http("/auth/v1/token?grant_type=refresh_token",{m:"POST",b:{refresh_token:SB.ses.refresh_token}});
+ if(r.ok&&r.j&&r.j.access_token){setSes(r.j);return"ok"}
+ if(r.net||r.s>=500||r.s==429)return"net";clearSes();return"none"}
+async function rest(path,o){let r=await http(path,Object.assign({auth:1},o||{}));if(r.s==401&&SB.ses){SB.ses.exp=0;if(await ensure()=="ok")r=await http(path,Object.assign({auth:1},o||{}))}return r}
+function am(r){const c=r&&r.j&&(r.j.error_code||r.j.code),m=String(msgOf(r)||"").toLowerCase();
+ if(r.net)return"Fără conexiune la internet";
+ if(c=="invalid_credentials"||m.includes("invalid login"))return"Email sau parolă greșită";
+ if(c=="email_not_confirmed"||m.includes("not confirmed"))return"Confirmă emailul înainte de autentificare";
+ if(c=="user_already_exists"||c=="email_exists"||m.includes("already"))return"Email deja folosit – autentifică-te";
+ if(c=="weak_password"||m.includes("password"))return"Parolă prea slabă (minim 6 caractere)";
+ if(c=="over_request_rate_limit"||c=="over_email_send_rate_limit"||r.s==429)return"Prea multe încercări – așteaptă puțin";
+ if(c=="email_address_invalid"||m.includes("email address"))return"Adresă de email invalidă";
+ if(m.includes("database error"))return"Numele de utilizator este ocupat sau invalid";
+ if(c=="signup_disabled")return"Înregistrările sunt oprite momentan";
+ return"Eroare: "+msgOf(r)}
+async function signIn(em,pw){const r=await http("/auth/v1/token?grant_type=password",{m:"POST",b:{email:em,password:pw}});
+ if(r.ok&&r.j&&r.j.access_token){setSes(r.j);return{ok:1}}return{err:am(r)}}
+async function signUp(em,pw,name,handle){const r=await http("/auth/v1/signup",{m:"POST",b:{email:em,password:pw,data:{username:name,handle:handle}}});
+ if(r.ok&&r.j&&r.j.access_token){setSes(r.j);return{ok:1}}
+ if(r.ok&&r.j&&Array.isArray(r.j.identities)&&!r.j.identities.length)return{err:"Email deja folosit – autentifică-te"};
+ if(r.ok)return{info:"Ți-am trimis un email de confirmare. Confirmă-l, apoi autentifică-te."};
+ return{err:am(r)}}
+async function signOut(){try{if(SB.ses)await http("/auth/v1/logout?scope=local",{m:"POST",auth:1})}catch(e){}clearSes()}
+async function handleFree(h){const r=await http("/rest/v1/rpc/handle_available",{m:"POST",b:{h:h}});return r.ok?r.j===true:null}
+async function loadProfile(){if(!SB.ses)return null;
+ const r=await rest("/rest/v1/profiles?id=eq."+SB.ses.uid+"&select=id,username,handle,bio,avatar");
+ if(r.ok&&Array.isArray(r.j)){let p=r.j[0];
+  if(!p){const c=await rest("/rest/v1/profiles?on_conflict=id",{m:"POST",h:{Prefer:"resolution=merge-duplicates,return=representation"},b:{id:SB.ses.uid}});p=c.ok&&Array.isArray(c.j)?c.j[0]:null}
+  if(p){SB.profile=p;LS.set("profile",p)}}
+ return SB.profile}
+
+/* =====================================================================
+   CAMERE  (aici le umplem pe rând, în update-urile viitoare)
+   Fiecare cameră poate defini:  mount(el)  show()  hide()
+   Dacă nu definește mount, se afișează starea goală.
+   search:true  → apare căutarea mică din header doar în camera respectivă.
+   ===================================================================== */
+const ROOMS=[
+ {id:"feed",label:"Feed",ic:"feed",search:false},
+ {id:"myblue",label:"My Blue",ic:"me",search:false},
+ {id:"games",label:"Games",ic:"games",search:false},
+ {id:"chat",label:"Chat",ic:"chat",search:false},
+ {id:"community",label:"Community",ic:"comm",search:false}
+];
+const Rooms={};
+/* ===== ROOM: Feed ===== */      // Rooms.feed={mount(el){},show(){},hide(){}};
+/* ===== ROOM: My Blue ===== */   // Rooms.myblue={...};
+/* ===== ROOM: Games ===== */     // Rooms.games={...};
+/* ===== ROOM: Chat ===== */      // Rooms.chat={...};
+/* ===== ROOM: Community ===== */ // Rooms.community={...};
+
+const emptyHTML=r=>`<div class="empty"><div class="ring"><svg viewBox="0 0 24 24">${P[r.ic]}</svg></div><h2>${esc(r.label)}</h2><p>În curând</p></div>`;
+let cur=null;
+function buildShell(){
+ $("#stage").innerHTML=ROOMS.map(r=>`<section class="room" id="r-${r.id}"></section>`).join("");
+ $("#nav").innerHTML=ROOMS.map(r=>`<button class="tb" data-id="${r.id}"><span class="ic"><svg viewBox="0 0 24 24">${P[r.ic]}</svg></span>${esc(r.label)}</button>`).join("")}
+function go(id){const R=ROOMS.find(x=>x.id==id);if(!R||id==cur)return;const prev=cur;cur=id;
+ $$(".tb").forEach(t=>t.classList.toggle("on",t.dataset.id==id));
+ $$(".room").forEach(s=>s.classList.toggle("on",s.id=="r-"+id));
+ const el=$("#r-"+id);
+ if(!el.dataset.m){el.dataset.m=1;const H=Rooms[id];if(H&&H.mount)H.mount(el);else el.innerHTML=emptyHTML(R)}
+ if(prev&&Rooms[prev]&&Rooms[prev].hide)Rooms[prev].hide();
+ if(Rooms[id]&&Rooms[id].show)Rooms[id].show();
+ $("#srch").hidden=!R.search}
+function resetShell(){cur=null;$$(".room").forEach(s=>{delete s.dataset.m;s.innerHTML="";s.classList.remove("on")});$$(".tb").forEach(t=>t.classList.remove("on"))}
+function drawer(o){$("#drawer").classList.toggle("open",!!o)}
+function fillAccount(){const p=SB.profile||{},n=p.username||(SB.ses&&SB.ses.email)||"—";
+ $("#dNm").textContent=n;$("#dHd").textContent=p.handle?"@"+p.handle:(SB.ses&&SB.ses.email)||"";$("#dAv").textContent=(n[0]||"B").toUpperCase()}
+function showApp(){$("#auth").classList.remove("on");$("#app").classList.add("on");resetShell();go("feed");fillAccount();
+ loadProfile().then(fillAccount)}
+function showAuth(){$("#app").classList.remove("on");drawer(0);setMode("in");$("#pw").value="";note("");$("#auth").classList.add("on")}
+
+/* ---------- API public pentru camerele viitoare ---------- */
+window.HB={go:go,rest:rest,toast:toast,esc:esc,icon:I,user:()=>SB.profile,session:()=>SB.ses,rooms:Rooms,
+ back(){if($("#drawer").classList.contains("open")){drawer(0);return true}
+  if($("#app").classList.contains("on")&&cur&&cur!="feed"){go("feed");return true}return false}};
+
+/* =====================================================================
+   AUTENTIFICARE (fără Guest)
+   ===================================================================== */
+const HRE=/^[a-z0-9_.]{3,20}$/;let mode="in",busy=0,hSt="",hTm=0,hSeq=0;
+function note(t,info){const m=$("#msg");m.textContent=t||"";m.className="msg"+(info?" info":"")}
+function fail(t){const m=$("#msg");m.textContent=t;m.className="msg";void m.offsetWidth;m.classList.add("shake")}
+function setMode(m){mode=m;const up=m=="up";$("#authBox").classList.toggle("up",up);$$(".seg button").forEach(b=>b.classList.toggle("on",b.dataset.m==m));
+ $(".fup>div").toggleAttribute("inert",!up);$("#go").textContent=up?"Creează cont":"Intră";$("#pw").autocomplete=up?"new-password":"current-password";note("")}
+function setBusy(b){busy=b;$("#go").classList.toggle("busy",!!b)}
+function eyeSet(show){$("#pw").type=show?"text":"password";$("#eye").innerHTML=I(show?"eyeoff":"eye")}
+function hCheck(){const v=$("#hd").value,s=$("#hst");clearTimeout(hTm);hSt="";s.textContent="";s.className="st";
+ if(!v)return;if(!HRE.test(v)){s.textContent="3–20";s.className="st no";return}
+ const q=++hSeq;s.textContent="…";hTm=setTimeout(async()=>{const f=await handleFree(v);if(q!=hSeq)return;
+  if(f===null){hSt="";s.textContent="";return}hSt=f?"free":"taken";s.textContent=f?"✓ liber":"ocupat";s.className="st "+(f?"ok":"no")},450)}
+async function submit(){if(busy)return;const up=mode=="up",em=$("#em").value.trim(),pw=$("#pw").value,nm=$("#nm").value.trim(),hd=$("#hd").value.trim();let e="";
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em))e="Adresă de email invalidă";
+ else if(pw.length<6)e="Parola trebuie să aibă minim 6 caractere";
+ else if(up){if(nm.length<2)e="Numele trebuie să aibă minim 2 caractere";else if(!HRE.test(hd))e="Utilizator: 3–20 caractere (litere mici, cifre, _ sau .)";else if(hSt=="taken")e="Numele de utilizator este ocupat"}
+ if(e)return fail(e);
+ note("");setBusy(1);const r=up?await signUp(em,pw,nm,hd):await signIn(em,pw);setBusy(0);
+ if(r.err)return fail(r.err);
+ if(r.info){setMode("in");note(r.info,1);return}
+ showApp()}
+
+/* =====================================================================
+   EVENIMENTE + PORNIRE
+   ===================================================================== */
+document.addEventListener("click",e=>{
+ const m=e.target.closest(".seg button");if(m){setMode(m.dataset.m);return}
+ const t=e.target.closest(".tb");if(t){go(t.dataset.id);return}
+ const a=e.target.closest("[data-act]");if(!a)return;
+ switch(a.dataset.act){
+  case"menu":drawer(1);break;
+  case"close":drawer(0);break;
+  case"bell":case"music":break;        // goale deocamdată (notificări / player muzical)
+  case"out":signOut().then(()=>{showAuth();toast("Deconectat")});break}});
+$("#go").addEventListener("click",submit);
+$("#eye").addEventListener("click",()=>eyeSet($("#pw").type=="password"));
+$("#hd").addEventListener("input",e=>{e.target.value=e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g,"").slice(0,20);hCheck()});
+["em","pw","nm","hd"].forEach(id=>$("#"+id).addEventListener("keydown",e=>{if(e.key=="Enter"){e.preventDefault();submit()}}));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&SB.ses)ensure().then(s=>{if(s=="none"&&$("#app").classList.contains("on")){showAuth();toast("Sesiunea a expirat")}})});
+
+(async function start(){
+ paint();buildShell();eyeSet(false);setMode("in");
+ const boot=(async()=>{if(!SB.ses)return"auth";const s=await ensure();return s=="none"?"auth":"app"})();
+ const [,dest]=await Promise.all([sleep(3100),boot]);
+ if(dest=="app")showApp();else showAuth();
+ $("#splash").classList.add("out");setTimeout(()=>$("#splash").remove(),800)})();
+</script></body></html>
+=== FILE: supabase/hiblue.sql ===
+-- =====================================================================
+-- HiBlue · baza de date (Supabase) — v0.1
+-- Rulează O SINGURĂ DATĂ în Supabase → SQL Editor. Este idempotent (poate fi rulat din nou).
+-- Aduce: tabela profiles, regulile RLS, crearea automată a profilului la înregistrare
+--        (din nume + @utilizator trimise de aplicație) și verificarea disponibilității @utilizator.
+-- Compatibil cu proiectul vechi Pulse (nu șterge nimic din ce există).
+-- =====================================================================
+
+-- ============ 1) PROFILE ============
+create table if not exists public.profiles (
+  id         uuid primary key references auth.users(id) on delete cascade,
+  username   text,                       -- numele afișat
+  handle     text,                       -- @utilizator (unic)
+  bio        text,
+  avatar     text,                       -- emoji sau cale/URL (în update-urile viitoare)
+  created_at timestamptz not null default now()
+);
+alter table public.profiles add column if not exists updated_at timestamptz not null default now();
+
+alter table public.profiles drop constraint if exists profiles_handle_format;
+alter table public.profiles add  constraint profiles_handle_format
+  check (handle is null or handle ~ '^[a-z0-9_.]{3,20}$');
+create unique index if not exists profiles_handle_lower_key on public.profiles (lower(handle));
+
+-- limite de lungime (le înlocuiesc pe cele strânse din Pulse: avatar putea avea doar 8 caractere)
+alter table public.profiles drop constraint if exists profiles_len;
+alter table public.profiles drop constraint if exists profiles_len_v2;
+alter table public.profiles add  constraint profiles_len_v2
+  check (char_length(coalesce(username,'')) <= 32
+     and char_length(coalesce(bio,''))      <= 160
+     and char_length(coalesce(avatar,''))   <= 500);
+
+-- ============ 2) RLS ============
+alter table public.profiles enable row level security;
+
+drop policy if exists profiles_select on public.profiles;
+create policy profiles_select on public.profiles for select to authenticated using (true);
+
+drop policy if exists profiles_insert on public.profiles;
+create policy profiles_insert on public.profiles for insert to authenticated with check (auth.uid() = id);
+
+drop policy if exists profiles_update on public.profiles;
+create policy profiles_update on public.profiles for update to authenticated
+  using (auth.uid() = id) with check (auth.uid() = id);
+
+drop policy if exists profiles_delete on public.profiles;
+create policy profiles_delete on public.profiles for delete to authenticated using (auth.uid() = id);
+
+-- ============ 3) updated_at automat ============
+create or replace function public.touch_updated_at() returns trigger
+language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end $$;
+drop trigger if exists profiles_touch on public.profiles;
+create trigger profiles_touch before update on public.profiles
+  for each row execute function public.touch_updated_at();
+
+-- ============ 4) Profil creat automat la înregistrare ============
+-- Aplicația trimite username + handle în metadatele înregistrării; trigger-ul le preia.
+-- Merge și când contul cere confirmare pe email (încă nu există sesiune, deci clientul nu poate scrie singur).
+create or replace function public.handle_new_user() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  h text := lower(nullif(trim(new.raw_user_meta_data->>'handle'), ''));
+  n text := nullif(trim(new.raw_user_meta_data->>'username'), '');
+begin
+  if coalesce(new.is_anonymous, false) then return new; end if;
+  if n is not null then n := left(n, 32); end if;
+  if h is not null and h !~ '^[a-z0-9_.]{3,20}$' then h := null; end if;
+  if h is not null and exists (select 1 from public.profiles where lower(handle) = h) then h := null; end if;
+  begin
+    insert into public.profiles(id, username, handle) values (new.id, n, h) on conflict (id) do nothing;
+  exception when unique_violation then
+    insert into public.profiles(id, username, handle) values (new.id, n, null) on conflict (id) do nothing;
+  end;
+  return new;
+end $$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- ============ 5) Verificare @utilizator liber (apelată de ecranul de înregistrare) ============
+create or replace function public.handle_available(h text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select h ~ '^[a-z0-9_.]{3,20}$'
+     and not exists (select 1 from public.profiles where lower(handle) = lower(h));
+$$;
+revoke all on function public.handle_available(text) from public;
+grant execute on function public.handle_available(text) to anon, authenticated;
