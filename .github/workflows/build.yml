@@ -1,0 +1,154 @@
+name: Build APK
+# Citește hiblue.txt (baza) + update0.0.1, update0.0.2 ... (în ordine), construiește APK-ul
+# și scoate un nou hiblue.txt care conține baza + toate updateurile aplicate.
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      upto:
+        description: "Opțional: aplică updateurile doar până la versiunea asta (ex. 0.0.5)"
+        required: false
+        default: ""
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+
+      - name: Reconstruiește proiectul (hiblue.txt + updateuri)
+        id: merge
+        env:
+          UPTO: ${{ github.event.inputs.upto }}
+        run: |
+          python - <<'PY'
+          import os, re, sys, shutil
+          from pathlib import Path
+
+          HDR = re.compile(r'^=== (FILE|DELETE): (.+?) ===\s*$')
+          UPD = re.compile(r'^update[\s_-]*v?(\d+(?:\.\d+)*)(?:[\s_-].*)?(?:\.txt)?$', re.I)
+
+          def die(m):
+              print("::error::" + m)
+              sys.exit(1)
+
+          def safe(p):
+              p = p.strip().replace("\\", "/")
+              if not p or p.startswith("/") or ".." in Path(p).parts:
+                  die("Cale nepermisă în fișier: " + p)
+              return Path(p).as_posix()
+
+          def parse(path):
+              txt = path.read_text(encoding="utf-8-sig").replace("\r\n", "\n")
+              ops, cur = [], None
+              for ln in txt.split("\n"):
+                  m = HDR.match(ln)
+                  if m:
+                      cur = [m.group(1), safe(m.group(2)), []]
+                      ops.append(cur)
+                  elif cur is not None:
+                      cur[2].append(ln)
+              if not ops:
+                  die(path.name + ": nu conține niciun bloc '=== FILE: cale ==='")
+              res = []
+              for k, p, b in ops:
+                  while b and b[-1] == "":
+                      b.pop()
+                  res.append((k, p, ("\n".join(b) + "\n") if b else ""))
+              return res
+
+          root = Path(".")
+          base = [f for f in root.iterdir() if f.is_file() and f.name.lower() == "hiblue.txt"]
+          if not base:
+              die("Lipsește hiblue.txt în rădăcina repo-ului")
+
+          files = {}
+          for k, p, c in parse(base[0]):
+              if k == "FILE":
+                  files[p] = c
+              else:
+                  files.pop(p, None)
+          print("Bază:", base[0].name, "->", len(files), "fișiere")
+
+          ups = []
+          for d in (root, root / "updates"):
+              if d.is_dir():
+                  for f in d.iterdir():
+                      m = UPD.match(f.name) if f.is_file() else None
+                      if m:
+                          ups.append((tuple(int(x) for x in m.group(1).split(".")), m.group(1), f))
+          ups.sort(key=lambda t: t[0])
+          seen = {}
+          for t, v, f in ups:
+              if t in seen:
+                  die("Două updateuri cu aceeași versiune: %s și %s" % (seen[t], f))
+              seen[t] = f
+
+          upto = os.environ.get("UPTO", "").strip()
+          if upto:
+              lim = tuple(int(x) for x in upto.lstrip("vV").split("."))
+              ups = [u for u in ups if u[0] <= lim]
+              print("Limită versiune:", upto)
+
+          log = []
+          for t, v, f in ups:
+              n = m_ = d_ = 0
+              for k, p, c in parse(f):
+                  if k == "FILE":
+                      if p in files: m_ += 1
+                      else: n += 1
+                      files[p] = c
+                  else:
+                      if files.pop(p, None) is not None: d_ += 1
+              line = "update%s (%s): %d noi, %d modificate, %d șterse" % (v, f.as_posix(), n, m_, d_)
+              print(line)
+              log.append(line)
+
+          for need in ("settings.gradle.kts", "app/build.gradle.kts", "app/src/main/AndroidManifest.xml"):
+              if need not in files:
+                  die("Proiectul reconstruit nu are fișierul obligatoriu: " + need)
+
+          out = Path("out")
+          shutil.rmtree(out, ignore_errors=True)
+          for p, c in files.items():
+              t = out / "project" / p
+              t.parent.mkdir(parents=True, exist_ok=True)
+              t.write_text(c, encoding="utf-8", newline="\n")
+          (out / "hiblue.txt").write_text("".join("=== FILE: %s ===\n%s" % (p, c) for p, c in files.items()), encoding="utf-8", newline="\n")
+
+          ver = ups[-1][1] if ups else "base"
+          if os.environ.get("GITHUB_OUTPUT"):
+              with open(os.environ["GITHUB_OUTPUT"], "a") as o:
+                  o.write("ver=%s\n" % ver)
+          if os.environ.get("GITHUB_STEP_SUMMARY"):
+              with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as o:
+                  o.write("### HiBlue %s\nFișiere în proiect: %d\n\n" % (ver, len(files)) + "\n".join("- " + l for l in log) + "\n")
+          print("Versiune finală:", ver, "|", len(files), "fișiere")
+          PY
+
+      - name: Salvează noul hiblue.txt (baza + toate updateurile)
+        uses: actions/upload-artifact@v4
+        with:
+          name: hiblue-txt-${{ steps.merge.outputs.ver }}
+          path: out/hiblue.txt
+
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: 17}
+      - uses: gradle/actions/setup-gradle@v3
+        with: {gradle-version: 8.7}
+
+      - name: Build APK
+        working-directory: out/project
+        run: gradle assembleDebug
+
+      - name: Redenumește APK
+        run: cp out/project/app/build/outputs/apk/debug/*.apk "out/HiBlue-${{ steps.merge.outputs.ver }}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HiBlue-apk-${{ steps.merge.outputs.ver }}
+          path: out/HiBlue-*.apk
