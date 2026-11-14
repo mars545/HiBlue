@@ -1,0 +1,92 @@
+=== FILE: app/build.gradle.kts ===
+import java.io.File
+import java.util.zip.ZipFile
+
+plugins{id("com.android.application");id("org.jetbrains.kotlin.android")}
+android{
+ namespace="ro.lingurar.hiblue"
+ compileSdk=34
+ defaultConfig{applicationId="ro.lingurar.hiblue";minSdk=24;targetSdk=34;versionCode=10;versionName="0.0.9";ndk{abiFilters+=listOf("armeabi-v7a","arm64-v8a","x86","x86_64")}}
+ buildTypes{
+  release{
+   isMinifyEnabled=true
+   isShrinkResources=true
+   proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"),"proguard-rules.pro")
+   signingConfig=signingConfigs.getByName("debug")
+  }
+ }
+ compileOptions{sourceCompatibility=JavaVersion.VERSION_17;targetCompatibility=JavaVersion.VERSION_17}
+ kotlinOptions{jvmTarget="17"}
+ testOptions{unitTests{isIncludeAndroidResources=true}}
+}
+configurations{register("natives")}
+dependencies{
+ implementation("androidx.core:core-ktx:1.13.1")
+
+ // LibGDX pentru THE JUDGMENT (joc nativ 3D first-person horror)
+ implementation("com.badlogicgames.gdx:gdx:1.12.1")
+ implementation("com.badlogicgames.gdx:gdx-backend-android:1.12.1")
+ "natives"("com.badlogicgames.gdx:gdx-platform:1.12.1:natives-armeabi-v7a")
+ "natives"("com.badlogicgames.gdx:gdx-platform:1.12.1:natives-arm64-v8a")
+ "natives"("com.badlogicgames.gdx:gdx-platform:1.12.1:natives-x86")
+ "natives"("com.badlogicgames.gdx:gdx-platform:1.12.1:natives-x86_64")
+
+ // Teste unitare JVM
+ testImplementation("junit:junit:4.13.2")
+}
+
+// Extrage .so din JAR-urile natives în jniLibs/<abi>/ — rulat înainte de mergeJniLibFolders
+tasks.register("extractNatives"){
+ doLast{
+  val nativesDir=file("src/main/jniLibs")
+  configurations["natives"].resolve().forEach{jar->
+   val n=jar.nameWithoutExtension
+   val abi=when{
+    n.contains("natives-armeabi-v7a")->"armeabi-v7a"
+    n.contains("natives-arm64-v8a")->"arm64-v8a"
+    n.contains("natives-x86_64")->"x86_64"
+    n.contains("natives-x86")->"x86"
+    else->return@forEach
+   }
+   val target=File(nativesDir,abi)
+   target.mkdirs()
+   ZipFile(jar).use{zip->
+    zip.entries().asSequence().filter{it.name.endsWith(".so")&&!it.isDirectory}.forEach{entry->
+     zip.getInputStream(entry).use{input->
+      File(target,File(entry.name).name).outputStream().use{output->
+       input.copyTo(output)
+      }
+     }
+    }
+   }
+  }
+ }
+}
+tasks.matching{it.name.startsWith("merge")&&it.name.endsWith("JniLibFolders")}.configureEach{dependsOn("extractNatives")}
+
+=== FILE: README.md ===
+# HiBlue – update0.0.9
+
+**Fix de compilare** pentru build-ul Gradle Kotlin DSL din update0.0.8.
+
+## Problema
+
+`app/build.gradle.kts` folosea nume Java complet calificate (`java.io.File`,
+`java.util.zip.ZipFile`) în corpul task-ului `extractNatives`, fără importuri
+explicite la top. În Kotlin DSL, acest lucru produce erorile:
+
+```
+Unresolved reference: io
+Unresolved reference: util
+Cannot infer a type for this parameter
+```
+
+## Repararea
+
+- Adăugate `import java.io.File` și `import java.util.zip.ZipFile` la top-ul
+  fișierului `build.gradle.kts`.
+- Înlocuite apelurile `java.io.File(...)` → `File(...)` și
+  `java.util.zip.ZipFile(...)` → `ZipFile(...)`.
+- Versiune bumped: `versionCode=10`, `versionName="0.0.9"`.
+
+Niciun alt fișier nu se modifică. Tot restul din update0.0.8 rămâne neschimbat.
