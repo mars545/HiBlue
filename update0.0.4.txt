@@ -1,0 +1,1875 @@
+=== FILE: app/src/main/assets/game_myblue.js ===
+/* =====================================================================
+   HiBlue · My Blue (update0.0.4)
+   A cozy plush-pet game: rooms, care, outfits, home decor and top-down
+   quests. Saves the pet locally and reports completed quest scores to GM.
+   ===================================================================== */
+(function () {
+  "use strict";
+  const G = window.GM;
+  if (!G) return;
+
+  const SAVE_KEY = "hiblue.myblue.save.v1";
+  const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[ch]));
+  const icon = (name) => ({
+    home: '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-6v-7h-4v7H4a1 1 0 0 1-1-1z"/>',
+    care: '<path d="M12 21s-8-4.6-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6.4-8 11-8 11Z"/><path d="M8 12h8"/>',
+    clothes: '<path d="m8 4 4 2 4-2 5 4-3 4-2-1v10H8V11l-2 1-3-4z"/>',
+    house: '<path d="m3 10 9-7 9 7M5 9v11h14V9M9 20v-6h6v6"/>',
+    quest: '<circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>',
+    coin: '<circle cx="12" cy="12" r="9"/><path d="M15 8.5c-.6-.7-1.5-1-2.7-1-1.4 0-2.3.7-2.3 1.7 0 2.5 5.8 1.1 5.8 4 0 1.2-1.1 2-2.8 2-1.2 0-2.3-.4-3-1.2M12 6v12"/>',
+    back: '<path d="m15 18-6-6 6-6"/><path d="M9 12h11"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    bath: '<path d="M3 11h18v3a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5zM7 11V6a3 3 0 0 1 6 0v1"/>',
+    sleep: '<path d="M20 15.5A8 8 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"/>',
+    bowl: '<path d="M4 12h16l-2 7H6zM7 9c0-2 2-2 2-4m4 4c0-2 2-2 2-4"/>',
+    sparkle: '<path d="m12 3 1.6 6.4L20 11l-6.4 1.6L12 19l-1.6-6.4L4 11l6.4-1.6z"/><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+    cart: '<path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h8a2 2 0 0 0 2-1.6L21 8H6"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/>',
+    leaf: '<path d="M20 4c-8 0-14 2-14 9a5 5 0 0 0 5 5c7 0 9-6 9-14Z"/><path d="M4 21c2-5 6-8 11-11"/>'
+  }[name] || '<circle cx="12" cy="12" r="8"/>');
+  const svg = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${icon(name)}</svg>`;
+
+  const ROOMS = [
+    { id: "living", name: "Sufragerie", color: "#49306d" },
+    { id: "kitchen", name: "Bucătărie", color: "#24627b" },
+    { id: "playroom", name: "Cameră de joacă", color: "#684682" },
+    { id: "bedroom", name: "Dormitor", color: "#344c82" },
+    { id: "bathroom", name: "Baie", color: "#247185" }
+  ];
+  const FOODS = [
+    { id: "apple", name: "Măr copt", cost: 5, full: 17, joy: 2, color: "#f2775d", note: "Gustare sănătoasă" },
+    { id: "berries", name: "Fructe de pădure", cost: 9, full: 25, joy: 5, color: "#cf72e8", note: "Dulci și pline de energie" },
+    { id: "soup", name: "Supă de casă", cost: 13, full: 34, joy: 7, color: "#f4a44e", note: "Rețeta preferată a bunicii" },
+    { id: "cake", name: "Prăjitură cu miere", cost: 18, full: 27, joy: 16, color: "#f4cb69", note: "Un răsfăț special" }
+  ];
+  const CLOTHES = [
+    { id: "bow", name: "Papionul lui Blue", slot: "neck", cost: 0, color: "#36a9ee", kind: "Accesoriu", note: "Preferatul lui Blue" },
+    { id: "sky-shirt", name: "Tricou cer senin", slot: "outfit", cost: 0, color: "#54c8ec", kind: "Haine", note: "Ușor și comod" },
+    { id: "garden-overalls", name: "Salopetă de grădinar", slot: "outfit", cost: 32, color: "#6fbe85", kind: "Haine", note: "Perfectă pentru curte" },
+    { id: "cloud-pajamas", name: "Pijama cu nori", slot: "outfit", cost: 38, color: "#9c9ced", kind: "Haine", note: "Moale pentru somn" },
+    { id: "chef-apron", name: "Șorț de bucătar", slot: "outfit", cost: 42, color: "#f0a56b", kind: "Haine", note: "Gata de gătit" },
+    { id: "raincoat", name: "Pelerină de ploaie", slot: "outfit", cost: 54, color: "#f1c64e", kind: "Haine", note: "Picăturile nu-l sperie" },
+    { id: "star-cape", name: "Pelerină stelară", slot: "outfit", cost: 68, color: "#9566d9", kind: "Haine", note: "Strălucește în aventuri" },
+    { id: "hero-suit", name: "Costum de erou", slot: "outfit", cost: 82, color: "#e36578", kind: "Haine", note: "Blue salvează ziua" },
+    { id: "winter-coat", name: "Haină de iarnă", slot: "outfit", cost: 88, color: "#6ba6dc", kind: "Haine", note: "Călduroasă și pufoasă" },
+    { id: "wizard-robe", name: "Roba magicianului", slot: "outfit", cost: 96, color: "#8151bf", kind: "Haine", note: "Un strop de magie" },
+    { id: "space-suit", name: "Costum cosmic", slot: "outfit", cost: 115, color: "#526bce", kind: "Haine", note: "Misiune spre stele" },
+    { id: "bunny-ears", name: "Urechi de iepuraș", slot: "hat", cost: 28, color: "#f2a6c1", kind: "Pălării", note: "Moi și pufoase" },
+    { id: "night-cap", name: "Căciulă de noapte", slot: "hat", cost: 34, color: "#5a74c8", kind: "Pălării", note: "Somn ușor" },
+    { id: "sun-hat", name: "Pălărie de soare", slot: "hat", cost: 46, color: "#e6b94d", kind: "Pălării", note: "Pentru zile senine" },
+    { id: "flower-crown", name: "Cunună de flori", slot: "hat", cost: 52, color: "#ed8eb2", kind: "Pălării", note: "Culeasă din grădină" },
+    { id: "round-glasses", name: "Ochelari rotunzi", slot: "glasses", cost: 40, color: "#9b8ee7", kind: "Accesorii", note: "Micul inventator" },
+    { id: "rainbow-scarf", name: "Fular curcubeu", slot: "neck", cost: 48, color: "#e887ad", kind: "Accesorii", note: "Colorat și călduros" },
+    { id: "tiny-backpack", name: "Rucsac de aventură", slot: "back", cost: 61, color: "#e88c58", kind: "Accesorii", note: "Ia tot ce-i trebuie" },
+    { id: "blue-bowtie", name: "Papion violet-albastru", slot: "neck", cost: 66, color: "#7868dd", kind: "Accesorii", note: "Pentru ocazii speciale" },
+    { id: "golden-crown", name: "Coroana prieteniei", slot: "hat", cost: 130, color: "#f2cd62", kind: "Pălării", note: "Câștigată cu bunătate" }
+  ];
+  const DECOR = [
+    { id: "living-cloud", room: "living", name: "Norișori luminoși", cost: 55, color: "#8c82df" },
+    { id: "living-garden", room: "living", name: "Grădină de interior", cost: 78, color: "#6fb98d" },
+    { id: "kitchen-ocean", room: "kitchen", name: "Bucătăria oceanului", cost: 72, color: "#43a9c1" },
+    { id: "kitchen-sun", room: "kitchen", name: "Bucătăria cu lămâi", cost: 84, color: "#e5b95e" },
+    { id: "play-stars", room: "playroom", name: "Tavan cu stele", cost: 88, color: "#8a6bd1" },
+    { id: "play-rainbow", room: "playroom", name: "Perete curcubeu", cost: 96, color: "#e889a9" },
+    { id: "bed-moon", room: "bedroom", name: "Luna de veghe", cost: 70, color: "#647ccc" },
+    { id: "bed-cloud", room: "bedroom", name: "Patul nor pufos", cost: 92, color: "#a89fe4" },
+    { id: "bath-bubbles", room: "bathroom", name: "Baie cu bule", cost: 66, color: "#5ac8d1" },
+    { id: "bath-coral", room: "bathroom", name: "Baie coral", cost: 80, color: "#ee977c" }
+  ];
+  const QUESTS = [
+    { id: "grandparents-yard", name: "Curtea bunicilor", desc: "Strânge frunzele și lasă grădina bunicilor frumoasă.", kind: "leaf", goal: 7, reward: 38, color: "#f2a65a", map: "yard" },
+    { id: "grocery-trip", name: "Drumul la magazin", desc: "Condu până la magazin, ia cele trei alimente și întoarce-te acasă.", kind: "grocery", goal: 3, reward: 52, color: "#e2bc5d", map: "road", vehicle: true },
+    { id: "strawberry-patch", name: "Căpșuni pentru bunica", desc: "Culege căpșunile coapte din grădină.", kind: "berry", goal: 8, reward: 34, color: "#e36f83", map: "garden" },
+    { id: "water-flowers", name: "Flori însetate", desc: "Udă florile care au nevoie de ajutor.", kind: "flower", goal: 6, reward: 36, color: "#77c9bd", map: "garden" },
+    { id: "apple-harvest", name: "Recolta de mere", desc: "Adună merele căzute înainte de ploaie.", kind: "apple", goal: 7, reward: 40, color: "#e17e5d", map: "orchard" },
+    { id: "lost-toys", name: "Jucării rătăcite", desc: "Găsește jucăriile ascunse prin grădină.", kind: "toy", goal: 6, reward: 42, color: "#9b80da", map: "park" },
+    { id: "bird-feeder", name: "Ajutor pentru păsărele", desc: "Strânge semințele și umple căsuța păsărilor.", kind: "seed", goal: 6, reward: 44, color: "#69aa79", map: "yard" }
+  ];
+  const PALETTES = {
+    living: ["#51346f", "#d9b7e8"], kitchen: ["#286780", "#b7e6e8"],
+    playroom: ["#71468a", "#f0b7db"], bedroom: ["#354f81", "#c0c8f4"],
+    bathroom: ["#267286", "#b8eef0"]
+  };
+
+  const css = document.createElement("style");
+  css.textContent = `
+  .mb-root{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;color:#fff;background:#0c0d22;font:500 13px/1.35 ui-rounded,"SF Pro Rounded",system-ui,sans-serif;user-select:none}
+  .mb-root *{box-sizing:border-box}
+  .mb-head{z-index:2;flex:none;padding:calc(var(--sat,env(safe-area-inset-top,0px)) + 9px) 14px 8px;background:linear-gradient(180deg,rgba(8,9,27,.97),rgba(8,9,27,.84));border-bottom:1px solid rgba(255,255,255,.08)}
+  .mb-brandline{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .mb-brand{display:flex;align-items:center;gap:10px;min-width:0}
+  .mb-mark{width:39px;height:39px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#223e70,#573c86);border:1px solid rgba(255,255,255,.17);box-shadow:0 6px 20px rgba(74,106,234,.25)}
+  .mb-mark svg{width:25px;height:25px;fill:none;stroke:#a5ebff;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .mb-name{font-size:18px;font-weight:900;letter-spacing:-.5px;line-height:1.05}
+  .mb-tag{font-size:10px;color:#aeb5d7;margin-top:3px;letter-spacing:.65px;text-transform:uppercase}
+  .mb-wallet{display:flex;align-items:center;gap:6px;padding:8px 11px;border-radius:14px;background:linear-gradient(135deg,rgba(245,199,89,.2),rgba(194,132,59,.1));border:1px solid rgba(245,199,89,.3);font-weight:850;color:#ffe18a;white-space:nowrap}
+  .mb-wallet svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8}
+  .mb-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:10px}
+  .mb-stat{min-width:0;padding:6px 7px 7px;border-radius:11px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.065)}
+  .mb-stat-head{display:flex;align-items:center;justify-content:space-between;gap:3px;font-size:9px;color:#d9def4;white-space:nowrap}
+  .mb-stat-head span:first-child{overflow:hidden;text-overflow:ellipsis}
+  .mb-stat-head b{font-size:9px;color:#fff}
+  .mb-bar{height:4px;margin-top:5px;border-radius:9px;background:rgba(0,0,0,.34);overflow:hidden}
+  .mb-bar i{display:block;height:100%;border-radius:9px;transition:width .3s}
+  .mb-stage{position:relative;isolation:isolate;flex:1;min-height:145px;overflow:hidden;background:#17213a}
+  .mb-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  .mb-bubble{position:absolute;z-index:1;left:50%;top:12px;max-width:78%;padding:7px 12px;border-radius:14px;background:rgba(10,12,31,.72);border:1px solid rgba(255,255,255,.15);color:#f2f1ff;text-align:center;font-size:11px;transform:translateX(-50%);pointer-events:none;backdrop-filter:blur(8px);transition:opacity .25s}
+  .mb-bubble:after{content:"";position:absolute;left:50%;bottom:-5px;width:8px;height:8px;background:#17182f;border-right:1px solid rgba(255,255,255,.15);border-bottom:1px solid rgba(255,255,255,.15);transform:translateX(-50%) rotate(45deg)}
+  .mb-questhud{position:absolute;z-index:2;left:12px;right:12px;top:12px;padding:10px 12px;border-radius:15px;background:rgba(9,12,28,.78);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(10px)}
+  .mb-questhud[hidden],.mb-joystick[hidden]{display:none}
+  .mb-questtop{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px}
+  .mb-questtop b{font-size:12px}
+  .mb-questtop span{color:#cbd5ff}
+  .mb-questbar{height:5px;background:rgba(255,255,255,.13);border-radius:8px;margin-top:7px;overflow:hidden}
+  .mb-questbar i{display:block;height:100%;background:linear-gradient(90deg,#63d4e5,#c78cfa);border-radius:8px;transition:width .2s}
+  .mb-joystick{position:absolute;z-index:3;left:18px;bottom:18px;width:100px;height:100px;border-radius:50%;touch-action:none;background:rgba(15,21,42,.32);border:1px solid rgba(255,255,255,.26);box-shadow:0 6px 24px rgba(0,0,0,.2)}
+  .mb-joyknob{position:absolute;left:50%;top:50%;width:40px;height:40px;border-radius:50%;transform:translate(-50%,-50%);background:linear-gradient(145deg,rgba(194,221,255,.7),rgba(128,142,232,.62));border:1px solid rgba(255,255,255,.55);box-shadow:0 3px 12px rgba(0,0,0,.3);pointer-events:none}
+  .mb-panel{z-index:2;flex:none;max-height:34vh;overflow:auto;padding:9px 12px calc(7px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,#11142a,#0c0e21);border-top:1px solid rgba(255,255,255,.08);scrollbar-width:thin;scrollbar-color:rgba(197,179,255,.3) transparent}
+  .mb-panel::-webkit-scrollbar{width:3px}.mb-panel::-webkit-scrollbar-thumb{background:rgba(197,179,255,.3);border-radius:8px}
+  .mb-paneltitle{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 7px}
+  .mb-paneltitle b{font-size:13px;font-weight:850}
+  .mb-paneltitle small{font-size:10px;color:#aeb5d7}
+  .mb-roomrow,.mb-filters{display:flex;gap:6px;overflow-x:auto;padding:1px 1px 7px;scrollbar-width:none}
+  .mb-roomrow::-webkit-scrollbar,.mb-filters::-webkit-scrollbar{display:none}
+  .mb-chip,.mb-filter{flex:none;padding:7px 10px;border-radius:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);color:#cbd0e9;font-size:10px;font-weight:750}
+  .mb-chip.active,.mb-filter.active{background:linear-gradient(135deg,rgba(116,101,211,.55),rgba(54,165,203,.3));border-color:rgba(168,185,255,.45);color:#fff}
+  .mb-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+  .mb-act{min-width:0;padding:8px 4px 7px;border-radius:13px;text-align:center;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.075);color:#f5f4ff;font-size:9px;font-weight:760}
+  .mb-act svg{display:block;width:17px;height:17px;margin:0 auto 4px;fill:none;stroke:#a9dafa;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .mb-act:active,.mb-button:active,.mb-navbtn:active,.mb-chip:active{transform:scale(.97)}
+  .mb-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .mb-card{display:flex;align-items:center;gap:8px;min-width:0;padding:8px;border-radius:13px;text-align:left;background:linear-gradient(140deg,rgba(255,255,255,.075),rgba(255,255,255,.035));border:1px solid rgba(255,255,255,.09);color:#fff}
+  .mb-itemmark{flex:none;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15)}
+  .mb-itemmark i{width:13px;height:13px;border-radius:50%;background:var(--item-color);box-shadow:0 0 13px color-mix(in srgb,var(--item-color) 55%,transparent)}
+  .mb-cardtext{flex:1;min-width:0}
+  .mb-cardtext b{display:block;font-size:10px;line-height:1.15}
+  .mb-cardtext small{display:block;margin-top:3px;color:#aab1d1;font-size:9px;line-height:1.2}
+  .mb-price{flex:none;color:#ffdd83;font-size:9px;font-weight:850;white-space:nowrap}
+  .mb-button{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 10px;border-radius:11px;background:linear-gradient(135deg,#8074dc,#3d9dc1);border:1px solid rgba(255,255,255,.18);color:white;font-size:10px;font-weight:850;white-space:nowrap}
+  .mb-button svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8}
+  .mb-button.owned{background:rgba(111,202,159,.17);border-color:rgba(111,202,159,.35);color:#adf4cd}
+  .mb-button.muted{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.1);color:#e3e6f7}
+  .mb-questlist{display:grid;gap:6px}
+  .mb-qcard{display:flex;align-items:center;gap:8px;padding:8px;border-radius:13px;background:linear-gradient(120deg,rgba(255,255,255,.07),rgba(255,255,255,.035));border:1px solid rgba(255,255,255,.085)}
+  .mb-qmark{flex:none;width:32px;height:32px;border-radius:11px;display:grid;place-items:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15)}
+  .mb-qmark svg{width:17px;height:17px;fill:none;stroke:var(--quest-color);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .mb-qtext{flex:1;min-width:0}
+  .mb-qtext b{display:block;font-size:10px}
+  .mb-qtext small{display:block;color:#afb6d4;font-size:9px;margin-top:2px;line-height:1.2}
+  .mb-qreward{display:flex;align-items:center;gap:3px;color:#ffe18a;font-size:9px;font-weight:850;white-space:nowrap}
+  .mb-qreward svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.8}
+  .mb-empty{padding:10px;border-radius:12px;text-align:center;color:#aeb5d7;background:rgba(255,255,255,.04);font-size:10px}
+  .mb-activequest{display:flex;align-items:center;gap:8px}
+  .mb-activequest>div{flex:1;min-width:0}
+  .mb-activequest b{display:block;font-size:11px}
+  .mb-activequest small{display:block;color:#b1bad9;font-size:9px;margin-top:2px}
+  .mb-nav{z-index:3;flex:none;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;padding:6px 8px calc(7px + var(--sab,env(safe-area-inset-bottom,0px)));background:#090b1b;border-top:1px solid rgba(255,255,255,.08)}
+  .mb-navbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;padding:5px 2px;border-radius:11px;color:#9da6c7;font-size:8px;font-weight:750}
+  .mb-navbtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
+  .mb-navbtn.active{background:rgba(133,122,223,.16);color:#d7d2ff}
+  .mb-toast{position:absolute;z-index:8;left:50%;bottom:calc(72px + var(--sab,env(safe-area-inset-bottom,0px)));max-width:85%;padding:9px 14px;border-radius:14px;background:rgba(22,25,50,.95);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:11px;text-align:center;box-shadow:0 9px 28px rgba(0,0,0,.38);opacity:0;transform:translate(-50%,8px);transition:.2s;pointer-events:none}
+  .mb-toast.on{opacity:1;transform:translate(-50%,0)}
+  .mb-shopnote{margin:0 2px 7px;color:#abb3d2;font-size:9px}
+  @media (min-width:600px){.mb-panel{max-height:30vh;padding-left:18px;padding-right:18px}.mb-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.mb-qcard{padding:10px}.mb-stat{padding:7px 10px}.mb-stage{min-height:220px}}
+  @media (max-height:650px){.mb-head{padding-top:calc(var(--sat,env(safe-area-inset-top,0px)) + 5px);padding-bottom:5px}.mb-stats{margin-top:6px}.mb-panel{max-height:29vh;padding-top:6px}.mb-nav{padding-top:4px;padding-bottom:calc(4px + var(--sab,env(safe-area-inset-bottom,0px)))}}
+  `;
+  document.head.appendChild(css);
+
+  const coverBlue = (k) => `<svg viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice"><defs>
+   <linearGradient id="${k}bg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#10264d"/><stop offset=".58" stop-color="#30225f"/><stop offset="1" stop-color="#101b3c"/></linearGradient>
+   <radialGradient id="${k}gl"><stop stop-color="#63ddf7" stop-opacity=".48"/><stop offset="1" stop-color="#63ddf7" stop-opacity="0"/></radialGradient>
+   <linearGradient id="${k}fur" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dc9b69"/><stop offset=".52" stop-color="#9e5d48"/><stop offset="1" stop-color="#62394a"/></linearGradient>
+   <linearGradient id="${k}bow"><stop stop-color="#bd65ed"/><stop offset=".55" stop-color="#576ff0"/><stop offset="1" stop-color="#37c7ec"/></linearGradient></defs>
+   <rect width="300" height="400" fill="url(#${k}bg)"/><circle cx="150" cy="193" r="138" fill="url(#${k}gl)"/>
+   <g fill="#fff" opacity=".7"><circle cx="35" cy="61" r="2"/><circle cx="72" cy="127" r="1.3"/><circle cx="257" cy="70" r="1.6"/><circle cx="260" cy="282" r="1.2"/><circle cx="48" cy="315" r="1.4"/></g>
+   <ellipse cx="150" cy="350" rx="99" ry="20" fill="#050914" opacity=".55"/>
+   <ellipse cx="108" cy="303" rx="47" ry="58" fill="url(#${k}fur)"/><ellipse cx="193" cy="303" rx="47" ry="58" fill="url(#${k}fur)"/>
+   <ellipse cx="150" cy="255" rx="80" ry="91" fill="url(#${k}fur)"/>
+   <circle cx="89" cy="98" r="42" fill="url(#${k}fur)"/><circle cx="211" cy="98" r="42" fill="url(#${k}fur)"/>
+   <circle cx="89" cy="98" r="23" fill="#d78e83"/><circle cx="211" cy="98" r="23" fill="#d78e83"/>
+   <ellipse cx="150" cy="168" rx="105" ry="99" fill="url(#${k}fur)"/>
+   <path d="M74 118 123 132 106 182 67 166Z" fill="#875448" stroke="#3a2937" stroke-width="5"/>
+   <path d="m77 126 36 10m-42 2 37 10m-43 3 34 9" stroke="#f1c39a" stroke-width="2" stroke-linecap="round"/>
+   <ellipse cx="112" cy="170" rx="10" ry="13" fill="#171323"/><ellipse cx="188" cy="170" rx="10" ry="13" fill="#171323"/>
+   <circle cx="109" cy="166" r="3" fill="#fff"/><circle cx="185" cy="166" r="3" fill="#fff"/>
+   <ellipse cx="150" cy="200" rx="39" ry="26" fill="#f0b0a0"/><ellipse cx="150" cy="191" rx="12" ry="9" fill="#30202a"/>
+   <path d="M150 199c-4 11-15 14-22 7m22-7c4 11 15 14 22 7" fill="none" stroke="#39222e" stroke-width="4" stroke-linecap="round"/>
+   <path d="M114 273q36-22 72 0l-8 51h-56z" fill="url(#${k}bow)" opacity=".94"/>
+   <path d="m150 276-24-19-22 7 23 23-23 23 22 7 24-22 24 22 22-7-23-23 23-23-22-7z" fill="url(#${k}bow)"/>
+   <circle cx="150" cy="287" r="11" fill="#4788eb" stroke="#c8b6ff" stroke-width="2"/>
+   <path d="M118 226v19m64-19v19" stroke="#4a2c3b" stroke-width="4" stroke-linecap="round"/>
+   <text x="150" y="376" text-anchor="middle" fill="#fff" font-size="22" font-weight="800" font-family="system-ui">MY BLUE</text>
+   </svg>`;
+
+  function defaultSave() {
+    return {
+      coins: 120, stats: { hunger: 82, clean: 88, joy: 82, energy: 86 },
+      owned: ["bow", "sky-shirt"], equipped: { neck: "bow", outfit: "sky-shirt", hat: null, glasses: null, back: null },
+      decor: [], themes: {}, room: "living", quests: 0, daily: "", last: Date.now()
+    };
+  }
+  function loadSave() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return defaultSave();
+      const saved = JSON.parse(raw);
+      const base = defaultSave();
+      const stats = saved.stats || {};
+      return {
+        ...base, ...saved,
+        coins: clamp(Number(saved.coins) || 0, 0, 999999),
+        stats: {
+          hunger: clamp(Number(stats.hunger ?? base.stats.hunger), 0, 100),
+          clean: clamp(Number(stats.clean ?? base.stats.clean), 0, 100),
+          joy: clamp(Number(stats.joy ?? base.stats.joy), 0, 100),
+          energy: clamp(Number(stats.energy ?? base.stats.energy), 0, 100)
+        },
+        owned: Array.isArray(saved.owned) ? [...new Set(saved.owned)] : base.owned,
+        equipped: { ...base.equipped, ...(saved.equipped || {}) },
+        decor: Array.isArray(saved.decor) ? saved.decor : [],
+        themes: saved.themes || {},
+        last: Number(saved.last) || Date.now()
+      };
+    } catch (_) {
+      return defaultSave();
+    }
+  }
+
+  function MyBlue(host, api) {
+    let state = loadSave();
+    let view = "home", room = ROOMS.some((r) => r.id === state.room) ? state.room : "living";
+    let mode = "home", activeQuest = null, filter = "Toate", careMode = "actions";
+    let W = 0, H = 0, dpr = 1, raf = 0, lastFrame = 0, elapsed = 0;
+    let toastTimer = 0, bubbleTimer = 0, dirtyStats = true;
+    const keys = new Set();
+    let joy = { x: 0, y: 0, active: false, pointer: null, centerX: 0, centerY: 0 };
+    let mapTarget = null;
+    let destroyed = false;
+
+    const root = document.createElement("div");
+    root.className = "mb-root";
+    root.innerHTML = `
+      <header class="mb-head">
+        <div class="mb-brandline">
+          <div class="mb-brand"><span class="mb-mark">${svg("sparkle")}</span><div><div class="mb-name">My Blue</div><div class="mb-tag">O lume mică, doar a voastră</div></div></div>
+          <div class="mb-wallet">${svg("coin")}<span data-coins>120</span></div>
+        </div>
+        <div class="mb-stats" data-stats></div>
+      </header>
+      <main class="mb-stage">
+        <canvas aria-label="Lumea lui Blue"></canvas>
+        <div class="mb-bubble" data-bubble>Blue te aștepta!</div>
+        <div class="mb-questhud" data-questhud hidden></div>
+        <div class="mb-joystick" data-joystick hidden aria-label="Controlează-l pe Blue"><span class="mb-joyknob"></span></div>
+      </main>
+      <section class="mb-panel" data-panel></section>
+      <nav class="mb-nav" data-nav aria-label="Meniu My Blue"></nav>
+      <div class="mb-toast" data-toast></div>`;
+    host.appendChild(root);
+    const canvas = root.querySelector("canvas"), c = canvas.getContext("2d", { alpha: false });
+    const panel = root.querySelector("[data-panel]"), nav = root.querySelector("[data-nav]");
+    const stage = root.querySelector(".mb-stage"), hud = root.querySelector("[data-questhud]");
+    const joystick = root.querySelector("[data-joystick]"), knob = root.querySelector(".mb-joyknob");
+    const bubble = root.querySelector("[data-bubble]");
+    const statEl = root.querySelector("[data-stats]"), coinEl = root.querySelector("[data-coins]");
+    let specks = [];
+
+    function save() {
+      try {
+        state.room = room;
+        state.last = Date.now();
+        localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+      } catch (_) {
+        say("Salvarea nu este disponibilă pe acest dispozitiv.");
+      }
+    }
+    function applyOfflineTime() {
+      const now = Date.now(), minutes = clamp((now - state.last) / 60000, 0, 720);
+      if (minutes > 0) {
+        state.stats.hunger = clamp(state.stats.hunger - minutes * .12, 0, 100);
+        state.stats.clean = clamp(state.stats.clean - minutes * .08, 0, 100);
+        state.stats.joy = clamp(state.stats.joy - minutes * .06, 0, 100);
+        state.stats.energy = clamp(state.stats.energy - minutes * .09, 0, 100);
+      }
+      state.last = now;
+      save();
+    }
+    function say(text) {
+      const el = root.querySelector("[data-toast]");
+      if (!el) return;
+      el.textContent = text;
+      el.classList.add("on");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove("on"), 2100);
+    }
+    function speak(text) {
+      bubble.textContent = text;
+      bubble.style.opacity = "1";
+      clearTimeout(bubbleTimer);
+      bubbleTimer = setTimeout(() => { if (mode === "home") bubble.style.opacity = ".62"; }, 2500);
+    }
+    function updateHUD() {
+      coinEl.textContent = String(state.coins);
+      const stats = [
+        ["hunger", "Burtică", "#f3b55b"],
+        ["clean", "Curat", "#54d3d6"],
+        ["joy", "Vesel", "#ed81b4"],
+        ["energy", "Energie", "#9b92f2"]
+      ];
+      statEl.innerHTML = stats.map(([key, label, color]) => {
+        const v = Math.round(state.stats[key]);
+        return `<div class="mb-stat"><div class="mb-stat-head"><span>${label}</span><b>${v}</b></div><div class="mb-bar"><i style="width:${v}%;background:${color}"></i></div></div>`;
+      }).join("");
+      if (activeQuest) {
+        hud.hidden = false;
+        const q = activeQuest.def;
+        const total = q.vehicle && activeQuest.leg !== "toStore" ? q.goal + 1 : q.goal;
+        const got = q.vehicle ? (activeQuest.leg === "toStore" ? 0 : activeQuest.items.filter((it) => it.done).length) : activeQuest.items.filter((it) => it.done).length;
+        const target = q.vehicle ? (activeQuest.leg === "toStore" ? "Condu până la magazin" : activeQuest.leg === "shopping" ? "Ia cele 3 alimente" : "Întoarce-te acasă") : `Obiecte găsite: ${got}/${q.goal}`;
+        hud.innerHTML = `<div class="mb-questtop"><b>${esc(q.name)}</b><span>${target}</span></div><div class="mb-questbar"><i style="width:${q.vehicle ? (activeQuest.leg === "toHome" ? "78%" : activeQuest.leg === "shopping" ? `${Math.round(55 + got / q.goal * 25)}%` : "25%") : `${Math.round(got / q.goal * 100)}%`}"></i></div>`;
+      } else hud.hidden = true;
+      joystick.hidden = mode !== "quest";
+      bubble.style.opacity = mode === "quest" ? "0" : "1";
+    }
+    function navButton(id, label, glyph, selected) {
+      return `<button class="mb-navbtn ${selected ? "active" : ""}" data-view="${id}">${svg(glyph)}<span>${label}</span></button>`;
+    }
+    function renderPanel() {
+      if (mode === "quest" && activeQuest) {
+        const q = activeQuest.def;
+        const got = activeQuest.items.filter((it) => it.done).length;
+        const progress = q.vehicle
+          ? (activeQuest.leg === "toStore" ? "Urmează drumul până la magazin." : activeQuest.leg === "shopping" ? `Produse în coș: ${got}/${q.goal}.` : "Coșul este plin. Întoarce-te acasă.")
+          : `Ai găsit ${got} din ${q.goal} obiecte.`;
+        panel.innerHTML = `<div class="mb-activequest"><div><b>${esc(q.desc)}</b><small>${progress} Folosește săgețile, WASD sau joystickul.</small></div><button class="mb-button muted" data-cancelquest>Încheie</button></div>`;
+        nav.innerHTML = navButton("quests", "Misiune", "quest", true);
+        return;
+      }
+      nav.innerHTML = [
+        navButton("home", "Acasă", "home", view === "home"),
+        navButton("care", "Îngrijire", "care", view === "care"),
+        navButton("wardrobe", "Haine", "clothes", view === "wardrobe"),
+        navButton("house", "Căsuță", "house", view === "house"),
+        navButton("quests", "Questuri", "quest", view === "quests")
+      ].join("");
+
+      if (view === "home") {
+        panel.innerHTML = `<div class="mb-roomrow">${ROOMS.map((r) => `<button class="mb-chip ${r.id === room ? "active" : ""}" data-room="${r.id}">${r.name}</button>`).join("")}</div>
+          <div class="mb-actions">
+            <button class="mb-act" data-action="feed">${svg("bowl")}Hrănește</button>
+            <button class="mb-act" data-action="wash">${svg("bath")}Baie</button>
+            <button class="mb-act" data-action="play">${svg("sparkle")}Joacă</button>
+            <button class="mb-act" data-action="sleep">${svg("sleep")}Somn</button>
+          </div>`;
+      } else if (view === "care") {
+        if (careMode === "food") {
+          panel.innerHTML = `<div class="mb-paneltitle"><b>Alege ceva bun pentru Blue</b><button class="mb-button muted" data-careback>${svg("back")}Înapoi</button></div><div class="mb-grid">${FOODS.map((f) => `<div class="mb-card"><span class="mb-itemmark" style="--item-color:${f.color}"><i></i></span><span class="mb-cardtext"><b>${f.name}</b><small>${f.note} · +${f.full} burtică</small></span><button class="mb-button" data-food="${f.id}">${f.cost} ${svg("coin")}</button></div>`).join("")}</div>`;
+        } else {
+          panel.innerHTML = `<div class="mb-paneltitle"><b>Blue se simte ${state.stats.joy > 65 ? "bine" : "mai bine cu puțină grijă"}</b><small>Acțiunile schimbă starea lui</small></div>
+            <div class="mb-actions">
+              <button class="mb-act" data-action="feed">${svg("bowl")}Mâncare</button>
+              <button class="mb-act" data-action="brush">${svg("sparkle")}Periază</button>
+              <button class="mb-act" data-action="wash">${svg("bath")}Spală</button>
+              <button class="mb-act" data-action="play">${svg("sun")}Joacă</button>
+            </div>
+            <div class="mb-actions" style="margin-top:6px;grid-template-columns:1fr 1fr">
+              <button class="mb-act" data-action="sleep">${svg("sleep")}Trage un pui de somn</button>
+              <button class="mb-act" data-room="bedroom">${svg("house")}Mergi în dormitor</button>
+            </div>`;
+        }
+      } else if (view === "wardrobe") {
+        const items = CLOTHES.filter((it) => filter === "Toate" || it.kind === filter);
+        panel.innerHTML = `<div class="mb-paneltitle"><b>Garderoba lui Blue</b><small>${state.owned.length} obiecte · apasă ca să probezi</small></div>
+          <div class="mb-filters">${["Toate", "Haine", "Pălării", "Accesorii"].map((f) => `<button class="mb-filter ${filter === f ? "active" : ""}" data-filter="${f}">${f}</button>`).join("")}</div>
+          <div class="mb-grid">${items.map((it) => {
+            const owned = state.owned.includes(it.id), worn = state.equipped[it.slot] === it.id;
+            const label = worn ? "Purtat" : owned ? "Probează" : `${it.cost} ${svg("coin")}`;
+            return `<div class="mb-card"><span class="mb-itemmark" style="--item-color:${it.color}"><i></i></span><span class="mb-cardtext"><b>${it.name}</b><small>${it.note}</small></span><button class="mb-button ${worn ? "owned" : ""}" data-cloth="${it.id}">${label}</button></div>`;
+          }).join("")}</div>`;
+      } else if (view === "house") {
+        panel.innerHTML = `<div class="mb-paneltitle"><b>Decorează ${ROOMS.find((r) => r.id === room).name.toLowerCase()}</b><small>Tot ce cumperi rămâne al tău</small></div>
+          <div class="mb-roomrow">${ROOMS.map((r) => `<button class="mb-chip ${r.id === room ? "active" : ""}" data-room="${r.id}">${r.name}</button>`).join("")}</div>
+          <div class="mb-grid">${DECOR.filter((d) => d.room === room).map((d) => {
+            const owned = state.decor.includes(d.id), equipped = state.themes[room] === d.id;
+            return `<div class="mb-card"><span class="mb-itemmark" style="--item-color:${d.color}"><i></i></span><span class="mb-cardtext"><b>${d.name}</b><small>${equipped ? "Decorul camerei tale" : owned ? "Cumpărat deja" : "Schimbă atmosfera"}</small></span><button class="mb-button ${equipped ? "owned" : ""}" data-decor="${d.id}">${equipped ? "Aplicat" : owned ? "Aplică" : `${d.cost} ${svg("coin")}`}</button></div>`;
+          }).join("") || `<div class="mb-empty">Alege o cameră pentru a-i găsi decorul potrivit.</div>`}</div>`;
+      } else {
+        panel.innerHTML = `<div class="mb-paneltitle"><b>Aventurile lui Blue</b><small>Fă questuri și strânge monede</small></div><div class="mb-questlist">${QUESTS.map((q) => `<div class="mb-qcard"><span class="mb-qmark" style="--quest-color:${q.color}">${svg(q.kind === "leaf" ? "leaf" : q.kind === "grocery" ? "cart" : "sparkle")}</span><span class="mb-qtext"><b>${q.name}</b><small>${q.desc}</small></span><span class="mb-qreward">${svg("coin")}${q.reward}</span><button class="mb-button" data-startquest="${q.id}">Joacă</button></div>`).join("")}</div>`;
+      }
+    }
+    function setView(next) {
+      if (mode === "quest") return;
+      view = next;
+      careMode = "actions";
+      renderPanel();
+    }
+    function setRoom(id) {
+      if (!ROOMS.some((r) => r.id === id)) return;
+      room = id; state.room = id; state.last = Date.now(); save(); renderPanel();
+      const words = { living: "Blue se odihnește în sufragerie.", kitchen: "Blue a venit în bucătărie!", playroom: "Timp de joacă!", bedroom: "Blue se pregătește de somn.", bathroom: "Bulele sunt gata!" };
+      speak(words[id]);
+    }
+    function stat(key, amount) {
+      state.stats[key] = clamp(state.stats[key] + amount, 0, 100);
+      dirtyStats = true;
+    }
+    function act(action) {
+      if (action === "feed") {
+        view = "care"; careMode = "food"; room = "kitchen"; speak("Ce bunătate alegem?");
+      } else if (action === "wash") {
+        room = "bathroom"; stat("clean", 32); stat("joy", 7); state.stats.energy = clamp(state.stats.energy - 3, 0, 100); speak("Blue e curat și parfumat!");
+      } else if (action === "brush") {
+        stat("clean", 18); stat("joy", 7); speak("Periat și gata de aventură!");
+      } else if (action === "play") {
+        room = "playroom"; stat("joy", 22); stat("energy", -9); speak("Blue râde și se joacă!");
+      } else if (action === "sleep") {
+        room = "bedroom"; stat("energy", 27); stat("joy", 5); stat("hunger", -6); speak("Un pui de somn liniștit.");
+      }
+      state.room = room; save(); renderPanel(); updateHUD();
+    }
+    function buyFood(id) {
+      const f = FOODS.find((x) => x.id === id);
+      if (!f) return;
+      if (state.coins < f.cost) return say("Nu ai destule monede. Hai la un quest!");
+      state.coins -= f.cost; stat("hunger", f.full); stat("joy", f.joy);
+      if (f.id === "soup") stat("energy", 5);
+      save(); updateHUD(); renderPanel(); speak(`Blue adoră ${f.name.toLowerCase()}!`);
+    }
+    function buyCloth(id) {
+      const item = CLOTHES.find((x) => x.id === id);
+      if (!item) return;
+      if (!state.owned.includes(id)) {
+        if (state.coins < item.cost) return say("Mai ai nevoie de monede pentru haina asta.");
+        state.coins -= item.cost; state.owned.push(id); say(`${item.name} este al lui Blue!`);
+      }
+      state.equipped[item.slot] = state.equipped[item.slot] === id ? null : id;
+      save(); renderPanel(); updateHUD();
+    }
+    function buyDecor(id) {
+      const item = DECOR.find((x) => x.id === id);
+      if (!item) return;
+      if (!state.decor.includes(id)) {
+        if (state.coins < item.cost) return say("Strânge mai multe monede ca să cumperi decorul.");
+        state.coins -= item.cost; state.decor.push(id);
+      }
+      state.themes[item.room] = id; room = item.room; state.room = room;
+      save(); renderPanel(); updateHUD(); speak("Căsuța lui Blue arată minunat!");
+    }
+
+    function seeded(seed) {
+      let x = seed | 0;
+      return () => {
+        x = (x * 1664525 + 1013904223) | 0;
+        return (x >>> 0) / 4294967296;
+      };
+    }
+    function startQuest(id) {
+      const def = QUESTS.find((q) => q.id === id);
+      if (!def || mode === "quest") return;
+      const rand = seeded(Date.now() + def.id.length * 17);
+      const items = [];
+      if (def.vehicle) {
+        for (let i = 0; i < def.goal; i++) items.push({ x: .79 + (rand() - .5) * .07, y: .22 + (rand() - .5) * .14, done: false, kind: "grocery" });
+      } else {
+        for (let i = 0; i < def.goal; i++) {
+          items.push({ x: .12 + rand() * .76, y: .2 + rand() * .64, done: false, kind: def.kind, phase: rand() * 6 });
+        }
+      }
+      const now = performance.now();
+      activeQuest = {
+        def, items, x: def.vehicle ? .14 : .14, y: def.vehicle ? .81 : .78,
+        angle: -Math.PI / 2, leg: def.vehicle ? "toStore" : "collect",
+        start: now, last: now, spark: 0
+      };
+      mode = "quest"; view = "quests"; mapTarget = null; joy.x = 0; joy.y = 0;
+      renderPanel(); updateHUD();
+      say(def.vehicle ? "Condu spre magazin. Coșul te așteaptă!" : `Quest început: ${def.name}`);
+    }
+    function cancelQuest() {
+      if (!activeQuest) return;
+      activeQuest = null; mode = "home"; view = "quests"; mapTarget = null;
+      joy.x = 0; joy.y = 0; renderPanel(); updateHUD(); say("Te-ai întors acasă. Questul te așteaptă.");
+    }
+    function completeQuest() {
+      if (!activeQuest) return;
+      const finished = activeQuest, q = finished.def;
+      const seconds = Math.max(1, Math.floor((performance.now() - finished.start) / 1000));
+      const today = new Date().toISOString().slice(0, 10);
+      const dailyBonus = state.daily === today ? 0 : 10;
+      state.daily = today;
+      state.coins += q.reward + dailyBonus;
+      state.quests++;
+      stat("joy", 10); stat("energy", -5);
+      activeQuest = null; mode = "home"; view = "quests"; mapTarget = null;
+      joy.x = 0; joy.y = 0; save(); renderPanel(); updateHUD();
+      speak(dailyBonus ? `Quest reușit! +${q.reward + dailyBonus} monede, inclusiv bonusul zilei.` : `Quest reușit! +${q.reward} monede.`);
+      const score = clamp(Math.floor(seconds * 1.7), 1, q.reward);
+      api.over(score, seconds);
+    }
+    function collect(it) {
+      if (it.done || !activeQuest) return;
+      it.done = true; activeQuest.spark = .55; state.stats.joy = clamp(state.stats.joy + 1.5, 0, 100);
+      if (api.hap) api.hap(0);
+      const q = activeQuest.def;
+      const got = activeQuest.items.filter((item) => item.done).length;
+      if (q.vehicle) {
+        if (activeQuest.leg === "shopping" && got >= q.goal) {
+          activeQuest.leg = "toHome";
+          say("Ai luat alimentele! Întoarce-te cu grijă acasă.");
+        }
+      } else if (got >= q.goal) {
+        updateHUD(); completeQuest(); return;
+      }
+      updateHUD();
+    }
+    function worldPoint(nx, ny) {
+      return { x: nx * W, y: ny * H };
+    }
+    function moveQuest(dt) {
+      const q = activeQuest;
+      if (!q) return;
+      let ix = joy.x, iy = joy.y;
+      if (keys.has("ArrowLeft") || keys.has("KeyA")) ix -= 1;
+      if (keys.has("ArrowRight") || keys.has("KeyD")) ix += 1;
+      if (keys.has("ArrowUp") || keys.has("KeyW")) iy -= 1;
+      if (keys.has("ArrowDown") || keys.has("KeyS")) iy += 1;
+      if (mapTarget) {
+        const dx = mapTarget.x - q.x * W, dy = mapTarget.y - q.y * H;
+        if (Math.hypot(dx, dy) < 15) mapTarget = null;
+        else { ix = dx; iy = dy; }
+      }
+      const len = Math.hypot(ix, iy);
+      if (len > .02) {
+        ix /= len; iy /= len;
+        const speed = q.def.vehicle ? 122 : 148;
+        q.x = clamp(q.x + ix * speed * dt / W, .06, .94);
+        q.y = clamp(q.y + iy * speed * dt / H, .12, .91);
+        if (q.def.vehicle) {
+          if (q.x < .2) q.y = clamp(q.y, .53, .91);
+          else if (q.x > .77) q.y = clamp(q.y, .12, .57);
+          else q.y = clamp(q.y, .43, .65);
+        }
+        q.angle = Math.atan2(iy, ix);
+      }
+      if (q.def.vehicle) {
+        if (q.leg === "toStore") {
+          const store = worldPoint(.83, .22);
+          if (Math.hypot(q.x * W - store.x, q.y * H - store.y) < Math.min(W, H) * .12) {
+            q.leg = "shopping"; say("Ai ajuns! Pune cele trei alimente în coș.");
+          }
+        } else if (q.leg === "shopping") {
+          q.items.forEach((it) => {
+            if (!it.done && Math.hypot(q.x - it.x, q.y - it.y) < .095) collect(it);
+          });
+        } else if (q.leg === "toHome") {
+          const home = worldPoint(.14, .81);
+          if (Math.hypot(q.x * W - home.x, q.y * H - home.y) < Math.min(W, H) * .12) completeQuest();
+        }
+      } else {
+        q.items.forEach((it) => {
+          if (!it.done && Math.hypot((q.x - it.x) * W, (q.y - it.y) * H) < Math.min(W, H) * .075) collect(it);
+        });
+      }
+      const oldEnergy = Math.round(state.stats.energy);
+      state.stats.energy = clamp(state.stats.energy - dt * .12, 0, 100);
+      if (Math.round(state.stats.energy) !== oldEnergy) dirtyStats = true;
+    }
+    function resize() {
+      const rect = stage.getBoundingClientRect();
+      W = Math.max(1, rect.width); H = Math.max(1, rect.height);
+      dpr = Math.min(window.devicePixelRatio || 1, 2.4);
+      canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      specks = [];
+      const rand = seeded(671 + Math.floor(W) + Math.floor(H));
+      for (let i = 0; i < 48; i++) specks.push({ x: rand() * W, y: rand() * H, r: .5 + rand() * 1.5, a: .08 + rand() * .18 });
+    }
+    function roundRect(x, y, w, h, r, fill, stroke, lw) {
+      r = Math.min(r, w / 2, h / 2);
+      c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r);
+      c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r);
+      c.arcTo(x, y, x + w, y, r); c.closePath();
+      if (fill) { c.fillStyle = fill; c.fill(); }
+      if (stroke) { c.strokeStyle = stroke; c.lineWidth = lw || 1; c.stroke(); }
+    }
+    function ellipse(x, y, rx, ry, fill, stroke, lw) {
+      c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+      if (fill) { c.fillStyle = fill; c.fill(); }
+      if (stroke) { c.strokeStyle = stroke; c.lineWidth = lw || 1; c.stroke(); }
+    }
+    function drawWindow(x, y, w, h, tint) {
+      roundRect(x - 4, y - 4, w + 8, h + 8, 12, "#3a345a", "rgba(255,255,255,.2)", 2);
+      const g = c.createLinearGradient(x, y, x + w, y + h);
+      g.addColorStop(0, "#9ce7fa"); g.addColorStop(1, tint || "#e1b6fb");
+      roundRect(x, y, w, h, 8, g);
+      c.strokeStyle = "rgba(40,52,95,.5)"; c.lineWidth = 3;
+      c.beginPath(); c.moveTo(x + w / 2, y); c.lineTo(x + w / 2, y + h); c.moveTo(x, y + h / 2); c.lineTo(x + w, y + h / 2); c.stroke();
+      ellipse(x + w * .7, y + h * .26, 9, 9, "rgba(255,255,255,.65)");
+    }
+    function drawRoom(t) {
+      const colors = PALETTES[room] || PALETTES.living;
+      const decor = DECOR.find((d) => d.id === state.themes[room]);
+      const wall = decor ? decor.color : colors[0], trim = colors[1];
+      const bg = c.createLinearGradient(0, 0, 0, H);
+      bg.addColorStop(0, wall); bg.addColorStop(.61, wall); bg.addColorStop(.615, "#8a6d72"); bg.addColorStop(1, "#604e69");
+      c.fillStyle = bg; c.fillRect(0, 0, W, H);
+      c.globalAlpha = .18;
+      for (let y = 16; y < H * .57; y += 32) {
+        c.strokeStyle = "#fff"; c.lineWidth = 1;
+        c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke();
+      }
+      c.globalAlpha = 1;
+      c.fillStyle = "rgba(255,255,255,.13)"; c.fillRect(0, H * .6, W, 5);
+      const floor = c.createLinearGradient(0, H * .62, 0, H);
+      floor.addColorStop(0, "#926c77"); floor.addColorStop(1, "#513e60");
+      c.fillStyle = floor; c.fillRect(0, H * .62, W, H * .38);
+      for (let i = 0; i < 7; i++) {
+        c.strokeStyle = "rgba(255,255,255,.08)"; c.lineWidth = 1;
+        c.beginPath(); c.moveTo(i * W / 6 - 15, H * .63); c.lineTo(i * W / 6 - 40, H); c.stroke();
+      }
+      const scale = Math.min(W / 360, H / 420, 1.25), s = Math.max(.72, scale);
+      ellipse(W * .52, H * .83, W * .32, H * .11, "rgba(35,21,50,.25)");
+      if (room === "kitchen") {
+        drawWindow(W * .1, H * .13, W * .26, H * .23, "#b8f0df");
+        roundRect(W * .55, H * .16, W * .32, H * .27, 10, "#eadac2", "rgba(255,255,255,.35)", 2);
+        roundRect(W * .51, H * .42, W * .43, H * .09, 8, "#986f62");
+        roundRect(W * .1, H * .52, W * .75, H * .1, 8, "#e8c49d");
+        c.fillStyle = "#a45e58"; c.fillRect(W * .1, H * .52, W * .75, 5);
+        roundRect(W * .14, H * .37, W * .2, H * .12, 7, "#d8ede9", "rgba(255,255,255,.4)", 1);
+        ellipse(W * .57, H * .72, 35 * s, 9 * s, "#d6a65f");
+        roundRect(W * .48, H * .7, W * .18, H * .045, 8, "#e7c681");
+        ellipse(W * .57, H * .69, 14 * s, 7 * s, "#f1b962");
+      } else if (room === "playroom") {
+        drawWindow(W * .68, H * .13, W * .23, H * .21, "#f9d8ee");
+        roundRect(W * .08, H * .19, W * .19, H * .27, 8, "#705272", "rgba(255,255,255,.2)", 2);
+        for (let i = 0; i < 3; i++) {
+          roundRect(W * .1, H * (.24 + i * .065), W * .15, 4, 2, ["#f2b76a", "#69d1d5", "#d78bc0"][i]);
+        }
+        ellipse(W * .51, H * .79, W * .33, H * .1, "#d98bb9");
+        roundRect(W * .72, H * .51, W * .17, H * .12, 10, "#8e6cc5");
+        roundRect(W * .75, H * .55, W * .11, H * .07, 5, "#f3bd62");
+        for (let i = 0; i < 4; i++) roundRect(W * (.25 + i * .13), H * .48, 22 * s, 22 * s, 5, ["#f18c9d", "#e6c85f", "#62c5ce", "#9b84dc"][i]);
+      } else if (room === "bedroom") {
+        drawWindow(W * .12, H * .12, W * .28, H * .23, "#bec7fa");
+        ellipse(W * .82, H * .16, 18 * s, 18 * s, "#f5df9b");
+        for (let i = 0; i < 5; i++) {
+          const x = W * (.53 + i * .075), y = H * (.13 + (i % 2) * .055);
+          c.fillStyle = "rgba(255,255,255,.8)"; c.beginPath(); c.arc(x, y, 1.6, 0, 6.28); c.fill();
+        }
+        roundRect(W * .14, H * .5, W * .72, H * .19, 14, "#6d6495");
+        roundRect(W * .17, H * .48, W * .67, H * .13, 14, "#c5bce4");
+        roundRect(W * .2, H * .49, W * .24, H * .08, 10, "#f4e9f1");
+        roundRect(W * .22, H * .59, W * .6, H * .09, 10, "#667ec1");
+        roundRect(W * .84, H * .33, W * .08, H * .18, 8, "#b98770");
+        ellipse(W * .88, H * .32, 14 * s, 6 * s, "#f3cc78");
+      } else if (room === "bathroom") {
+        for (let x = 0; x < W; x += 34) for (let y = 0; y < H * .61; y += 32) {
+          roundRect(x + 2, y + 2, 30, 28, 4, "rgba(190,246,248,.08)", "rgba(227,255,255,.13)", 1);
+        }
+        roundRect(W * .12, H * .36, W * .42, H * .26, 20, "#ebfbff", "rgba(255,255,255,.65)", 3);
+        roundRect(W * .16, H * .4, W * .34, H * .17, 16, "#70d5e0");
+        for (let i = 0; i < 7; i++) ellipse(W * (.2 + i * .045), H * (.45 + Math.sin(t * 1.5 + i) * .025), 3 + (i % 2) * 2, 3 + (i % 2) * 2, "rgba(255,255,255,.8)");
+        roundRect(W * .68, H * .17, W * .2, H * .2, 10, "#d8f5f7", "rgba(255,255,255,.5)", 2);
+        ellipse(W * .78, H * .42, 24 * s, 11 * s, "#d7eff0");
+        roundRect(W * .65, H * .44, W * .26, H * .06, 10, "#f6ffff");
+      } else {
+        drawWindow(W * .67, H * .13, W * .22, H * .22, "#b7e9fb");
+        roundRect(W * .1, H * .26, W * .26, H * .28, 11, "#6b4d70", "rgba(255,255,255,.2)", 2);
+        for (let i = 0; i < 3; i++) roundRect(W * .14, H * (.32 + i * .065), W * .18, 5, 3, ["#e5c376", "#9bd8d2", "#e5a8c7"][i]);
+        ellipse(W * .49, H * .78, W * .36, H * .12, decor ? "#9d91cd" : "#8e7392");
+        roundRect(W * .77, H * .46, W * .12, H * .17, 9, "#a66d5d");
+        ellipse(W * .83, H * .45, 22 * s, 8 * s, "#d29a66");
+      }
+      if (decor) {
+        for (let i = 0; i < 7; i++) {
+          const x = (i * 67 + 21) % Math.max(50, W - 22) + 10;
+          const y = H * (.1 + ((i * 17) % 35) / 100);
+          c.globalAlpha = .55; ellipse(x, y, 2.2, 2.2, i % 2 ? "#fff0b0" : "#c7f6ff"); c.globalAlpha = 1;
+        }
+      }
+    }
+    function drawPlush(x, y, size, t, topDown) {
+      c.save(); c.translate(x, y); c.scale(size / 180, size / 180);
+      const fur = c.createLinearGradient(-62, -72, 58, 120);
+      fur.addColorStop(0, "#e2ae79"); fur.addColorStop(.48, "#ae704f"); fur.addColorStop(1, "#754851");
+      const shade = c.createLinearGradient(-40, -22, 30, 110);
+      shade.addColorStop(0, "#efc394"); shade.addColorStop(1, "#a46251");
+      ellipse(0, 88, 64, 14, "rgba(21,13,30,.24)");
+      ellipse(-39, 79, 31, 36, fur, "#59394a", 3);
+      ellipse(39, 79, 31, 36, fur, "#59394a", 3);
+      ellipse(0, 45, 49, 57, fur, "#59394a", 3);
+      ellipse(-46, -64, 24, 25, fur, "#59394a", 3);
+      ellipse(46, -64, 24, 25, fur, "#59394a", 3);
+      ellipse(-46, -64, 13, 14, "#d68d87");
+      ellipse(46, -64, 13, 14, "#d68d87");
+      ellipse(0, -26, 68, 60, fur, "#59394a", 3);
+      // stitched patch, inspired by Blue's handmade plush look
+      c.save(); c.rotate(-.28);
+      roundRect(-54, -49, 30, 36, 7, "#8d574d", "#382b3b", 2.8);
+      c.strokeStyle = "#f0bf9c"; c.lineWidth = 1.5; c.setLineDash([3, 3]);
+      c.strokeRect(-51, -46, 24, 30); c.setLineDash([]);
+      c.restore();
+      if (!topDown) {
+        const blink = Math.sin(t * .9 + 1) > .986;
+        ellipse(-22, -29, 7, blink ? 1.7 : 9, "#171522");
+        ellipse(22, -29, 7, blink ? 1.7 : 9, "#171522");
+        ellipse(-24, -32, 2.3, 2.3, "#fff"); ellipse(20, -32, 2.3, 2.3, "#fff");
+        ellipse(0, -7, 24, 16, "#edac9e", "#794c4a", 1.5);
+        ellipse(0, -13, 7, 5, "#302331");
+        c.strokeStyle = "#3a2532"; c.lineWidth = 2.5; c.lineCap = "round";
+        c.beginPath(); c.moveTo(0, -8); c.quadraticCurveTo(-2, 1, -11, -1); c.moveTo(0, -8); c.quadraticCurveTo(2, 1, 11, -1); c.stroke();
+      } else {
+        ellipse(-20, -26, 5, 5, "#171522"); ellipse(20, -26, 5, 5, "#171522");
+        ellipse(0, -4, 15, 11, "#edac9e");
+      }
+      // Clothing and accessories
+      const outfit = CLOTHES.find((it) => it.id === state.equipped.outfit);
+      if (outfit) {
+        c.fillStyle = outfit.color;
+        c.beginPath(); c.moveTo(-42, 17); c.quadraticCurveTo(0, 5, 42, 17); c.lineTo(34, 65); c.quadraticCurveTo(0, 80, -34, 65); c.closePath(); c.fill();
+        c.strokeStyle = "rgba(255,255,255,.44)"; c.lineWidth = 2; c.beginPath(); c.moveTo(-22, 25); c.lineTo(22, 25); c.stroke();
+      }
+      const neck = CLOTHES.find((it) => it.id === state.equipped.neck);
+      if (neck) {
+        c.fillStyle = neck.color;
+        c.beginPath(); c.moveTo(-21, 12); c.lineTo(-39, 0); c.lineTo(-28, 28); c.lineTo(-5, 18); c.closePath(); c.fill();
+        c.beginPath(); c.moveTo(21, 12); c.lineTo(39, 0); c.lineTo(28, 28); c.lineTo(5, 18); c.closePath(); c.fill();
+        ellipse(0, 14, 8, 8, neck.color, "rgba(255,255,255,.6)", 1.5);
+      }
+      const hat = CLOTHES.find((it) => it.id === state.equipped.hat);
+      if (hat) {
+        if (hat.id === "bunny-ears") {
+          c.save(); c.rotate(-.12);
+          ellipse(-14, -82, 9, 23, hat.color, "#754851", 2); ellipse(14, -82, 9, 23, hat.color, "#754851", 2);
+          ellipse(-14, -82, 4, 15, "#f4c1d7"); ellipse(14, -82, 4, 15, "#f4c1d7");
+          c.restore();
+        } else if (hat.id === "flower-crown") {
+          c.strokeStyle = "#6ebc7f"; c.lineWidth = 5; c.beginPath(); c.arc(0, -40, 38, Math.PI * 1.08, Math.PI * 1.92); c.stroke();
+          for (let i = 0; i < 5; i++) ellipse(-30 + i * 15, -65 - Math.sin(i) * 5, 5, 5, i % 2 ? "#f7c868" : "#f4a0c4");
+        } else {
+          roundRect(-35, -81, 70, 19, 9, hat.color, "rgba(255,255,255,.3)", 1.5);
+          roundRect(-22, -102, 44, 26, 12, hat.color);
+        }
+      }
+      const glasses = CLOTHES.find((it) => it.id === state.equipped.glasses);
+      if (glasses && !topDown) {
+        c.strokeStyle = glasses.color; c.lineWidth = 2.8;
+        c.beginPath(); c.arc(-22, -29, 12, 0, Math.PI * 2); c.arc(22, -29, 12, 0, Math.PI * 2); c.moveTo(-10, -29); c.lineTo(10, -29); c.stroke();
+      }
+      c.globalAlpha = .24;
+      for (let i = 0; i < 24; i++) {
+        const a = i * 2.399, rr = 28 + (i % 5) * 6;
+        ellipse(Math.cos(a) * rr, -26 + Math.sin(a) * rr * .72, 1.1, 1.1, i % 2 ? "#f5d1aa" : "#4a2e3a");
+      }
+      c.globalAlpha = 1;
+      c.restore();
+    }
+    function drawTree(x, y, s) {
+      c.fillStyle = "#765542"; roundRect(x - 4 * s, y + 6 * s, 8 * s, 19 * s, 3 * s, "#765542");
+      ellipse(x, y, 22 * s, 20 * s, "#3c8058", "#a8d68b", 1);
+      ellipse(x - 8 * s, y - 6 * s, 12 * s, 11 * s, "#65ad72");
+      ellipse(x + 8 * s, y - 7 * s, 11 * s, 10 * s, "#4c9a69");
+      ellipse(x - 5 * s, y - 10 * s, 4 * s, 3 * s, "rgba(255,255,255,.24)");
+    }
+    function drawHouse(x, y, w, h, label, store) {
+      roundRect(x - w / 2, y - h / 2, w, h, 8, store ? "#e6bd77" : "#d5b089", "rgba(40,44,50,.4)", 2);
+      c.fillStyle = store ? "#874f58" : "#9a5d58";
+      c.beginPath(); c.moveTo(x - w * .6, y - h * .34); c.lineTo(x, y - h * .82); c.lineTo(x + w * .6, y - h * .34); c.closePath(); c.fill();
+      roundRect(x - 9, y + h * .02, 18, h * .43, 4, store ? "#75c4cb" : "#815e69");
+      if (label) {
+        c.font = `700 ${Math.max(9, Math.min(12, W / 30))}px system-ui`;
+        c.textAlign = "center"; c.fillStyle = "#fff"; c.shadowColor = "rgba(12,14,22,.7)"; c.shadowBlur = 5; c.fillText(label, x, y + h * .75); c.shadowBlur = 0;
+      }
+    }
+    function drawRoad() {
+      const p = [[.14,.81],[.14,.54],[.83,.54],[.83,.22]];
+      c.lineCap = "round"; c.lineJoin = "round";
+      c.beginPath(); p.forEach(([x,y],i) => i ? c.lineTo(x*W,y*H) : c.moveTo(x*W,y*H));
+      c.strokeStyle = "#3c4559"; c.lineWidth = Math.min(W,H)*.2; c.stroke();
+      c.beginPath(); p.forEach(([x,y],i) => i ? c.lineTo(x*W,y*H) : c.moveTo(x*W,y*H));
+      c.strokeStyle = "#778195"; c.lineWidth = Math.min(W,H)*.16; c.stroke();
+      c.setLineDash([12, 13]); c.beginPath(); p.forEach(([x,y],i) => i ? c.lineTo(x*W,y*H) : c.moveTo(x*W,y*H));
+      c.strokeStyle = "#f6dd8a"; c.lineWidth = 2; c.stroke(); c.setLineDash([]);
+      drawHouse(W*.14,H*.81,Math.min(W*.24,78),Math.min(H*.16,65),"ACASĂ",false);
+      drawHouse(W*.83,H*.22,Math.min(W*.24,78),Math.min(H*.16,65),"MAGAZIN",true);
+      for (let i = 0; i < 7; i++) {
+        const y = i % 2 ? H*.37 : H*.71, x = W*(.28 + i*.075);
+        drawTree(x, y, .42 + (i%3)*.08);
+      }
+    }
+    function drawWorldBase(q, t) {
+      const g = c.createLinearGradient(0, 0, W, H);
+      g.addColorStop(0, "#8dc97d"); g.addColorStop(.5, "#64a96f"); g.addColorStop(1, "#4c9467");
+      c.fillStyle = g; c.fillRect(0, 0, W, H);
+      for (let i = 0; i < 95; i++) {
+        const x = (i * 71 + 17) % Math.floor(W), y = (i * 97 + 29) % Math.floor(H);
+        c.fillStyle = i % 3 ? "rgba(228,244,173,.13)" : "rgba(31,104,71,.13)";
+        c.beginPath(); c.ellipse(x, y, 3 + i%4, 1.3, i*.4, 0, Math.PI*2); c.fill();
+      }
+      if (q.map === "road") drawRoad();
+      else {
+        const path = c.createLinearGradient(0, H*.5, W, H*.6);
+        path.addColorStop(0,"#d8c18d");path.addColorStop(1,"#bdab7e");
+        c.beginPath(); c.moveTo(-20,H*.75); c.quadraticCurveTo(W*.3,H*.48,W*.56,H*.62); c.quadraticCurveTo(W*.78,H*.72,W+20,H*.34);
+        c.strokeStyle="rgba(112,83,61,.26)";c.lineWidth=Math.min(W,H)*.2;c.stroke();
+        c.strokeStyle=path;c.lineWidth=Math.min(W,H)*.17;c.stroke();
+        drawHouse(W*.82,H*.19,Math.min(W*.27,88),Math.min(H*.16,68),"BUNICII",false);
+        for (let i=0;i<7;i++) drawTree(W*(.08+(i%4)*.25),H*(.15+Math.floor(i/4)*.63),.55+(i%3)*.12);
+        // flower beds and garden rows
+        for(let i=0;i<5;i++){
+          c.strokeStyle="rgba(240,224,156,.5)";c.lineWidth=2;c.beginPath();c.moveTo(W*(.17+i*.1),H*.27);c.quadraticCurveTo(W*(.2+i*.1),H*.35,W*(.17+i*.1),H*.43);c.stroke();
+        }
+      }
+      // soft scene glints
+      specks.forEach((p) => { c.fillStyle=`rgba(255,255,255,${p.a*(.7+.3*Math.sin(t+p.x))})`;c.beginPath();c.arc(p.x,p.y,p.r,0,Math.PI*2);c.fill(); });
+    }
+    function drawTarget(it, t) {
+      const x = it.x * W, y = it.y * H, bob = Math.sin(t * 3 + (it.phase || 0)) * 2.2;
+      c.save(); c.translate(x, y + bob);
+      c.shadowColor = "rgba(21,31,37,.3)"; c.shadowBlur = 7;
+      if (it.kind === "leaf") {
+        c.rotate((it.phase || .4) - .5);
+        c.fillStyle = "#df9951"; c.beginPath(); c.moveTo(0,-11); c.quadraticCurveTo(16,-4,4,12); c.quadraticCurveTo(-12,9,0,-11); c.fill();
+        c.strokeStyle="#f6d38a";c.lineWidth=1.3;c.beginPath();c.moveTo(0,-8);c.lineTo(3,8);c.stroke();
+      } else if (it.kind === "berry") {
+        ellipse(0,0,9,10,"#e84e69","#8e354e",1);
+        c.fillStyle="#67a96f";c.beginPath();for(let i=0;i<5;i++){const a=i*1.25;c.lineTo(Math.cos(a)*5, -8+Math.sin(a)*4)}c.closePath();c.fill();
+        c.fillStyle="#ffdf9d";for(let i=0;i<4;i++){c.beginPath();c.arc(-4+i*2.7,-1+(i%2)*4,1,0,6.28);c.fill()}
+      } else if (it.kind === "flower") {
+        for(let i=0;i<5;i++){const a=i*Math.PI*2/5;ellipse(Math.cos(a)*5,Math.sin(a)*5,4,4,"#f2b5d5")}
+        ellipse(0,0,3.5,3.5,"#f3d16c");
+        c.strokeStyle="#559b65";c.lineWidth=2;c.beginPath();c.moveTo(0,8);c.lineTo(1,17);c.stroke();
+      } else if (it.kind === "apple") {
+        ellipse(-4,1,6,8,"#e6594f");ellipse(4,1,6,8,"#ef7652");c.strokeStyle="#654e39";c.lineWidth=2;c.beginPath();c.moveTo(0,-7);c.lineTo(2,-12);c.stroke();ellipse(5,-9,4,2,"#80b96d");
+      } else if (it.kind === "toy") {
+        roundRect(-9,-8,18,16,5,it.color || "#9c7be0","#fff",1);
+        ellipse(-3,-1,1.5,1.5,"#fff");ellipse(3,-1,1.5,1.5,"#fff");
+      } else if (it.kind === "seed" || it.kind === "grocery") {
+        roundRect(-8,-10,16,19,4,it.kind === "grocery" ? "#e9bf69" : "#d1a265","#fff",1);
+        c.strokeStyle="rgba(86,61,40,.6)";c.lineWidth=1.3;c.beginPath();c.moveTo(-5,-10);c.lineTo(-5,-14);c.lineTo(5,-14);c.lineTo(5,-10);c.stroke();
+        if(it.kind==="grocery"){c.fillStyle="#83b978";c.fillRect(-4,-3,4,7);c.fillStyle="#e87d69";c.fillRect(1,-4,4,8)}
+      }
+      c.shadowBlur=0;c.restore();
+    }
+    function drawCar(x, y, angle) {
+      c.save(); c.translate(x, y); c.rotate(angle);
+      roundRect(-21,-12,42,24,8,"#e0a84e","#fff2c1",2);
+      roundRect(-11,-9,21,18,5,"#a9e4f1","rgba(38,65,85,.8)",1);
+      c.fillStyle="#f7e9a6"; c.fillRect(17,-8,3,5); c.fillRect(17,3,3,5);
+      c.fillStyle="#302d42"; c.fillRect(-15,-14,9,3); c.fillRect(7,-14,9,3); c.fillRect(-15,11,9,3); c.fillRect(7,11,9,3);
+      drawPlush(0,0,24,elapsed,true);
+      c.restore();
+    }
+    function drawHome(t) {
+      drawRoom(t);
+      const size = Math.min(W*.55,H*.62,220);
+      drawPlush(W*.5,H*.69,size,t,false);
+      // small looping ambient fireflies and light around Blue
+      const pulse = .5 + .5*Math.sin(t*2);
+      c.globalAlpha = .22 + pulse*.14;
+      const rg = c.createRadialGradient(W*.5,H*.55,8,W*.5,H*.55,size*.9);
+      rg.addColorStop(0,"rgba(142,206,255,.55)");rg.addColorStop(1,"rgba(142,206,255,0)");
+      c.fillStyle=rg;c.fillRect(0,0,W,H);c.globalAlpha=1;
+    }
+    function drawQuest(t) {
+      const q = activeQuest;
+      if (!q) { drawHome(t); return; }
+      drawWorldBase(q.def,t);
+      if (q.def.vehicle) {
+        const store=worldPoint(.83,.22),home=worldPoint(.14,.81);
+        if(q.leg==="toStore"){ellipse(store.x,store.y,Math.min(W,H)*.16,Math.min(W,H)*.13,"rgba(255,224,126,.1)","rgba(255,242,191,.6)",2)}
+        if(q.leg==="toHome"){ellipse(home.x,home.y,Math.min(W,H)*.15,Math.min(W,H)*.12,"rgba(122,221,177,.12)","rgba(185,255,207,.65)",2)}
+        q.items.forEach((it)=>{if(!it.done)drawTarget(it,t)});
+        if(q.leg==="shopping"&&q.items.every((it)=>it.done))q.leg="toHome";
+        drawCar(q.x*W,q.y*H,q.angle);
+      } else {
+        q.items.forEach((it)=>{if(!it.done)drawTarget(it,t)});
+        drawPlush(q.x*W,q.y*H,Math.min(W*.18,H*.19,76),t,true);
+      }
+      c.font="700 10px system-ui";c.textAlign="center";
+      const instruction=q.def.vehicle?(q.leg==="toStore"?"MAGAZINUL E MARCAT CU AUR":"URMĂREȘTE DRUMUL ÎNAPOI ACASĂ"):`GĂSEȘTE OBIECTELE MARCATE`;
+      roundRect(W*.5-102,H-27,204,20,9,"rgba(15,25,36,.62)","rgba(255,255,255,.15)",1);
+      c.fillStyle="#fff";c.fillText(instruction,W*.5,H-13);
+    }
+    function frame(now) {
+      if (destroyed) return;
+      raf = requestAnimationFrame(frame);
+      const dt = Math.min(.04, Math.max(0, (now - (lastFrame || now)) / 1000));
+      lastFrame = now; elapsed += dt;
+      if (mode === "quest" && activeQuest) {
+        moveQuest(dt);
+        if (activeQuest) activeQuest.spark = Math.max(0, activeQuest.spark - dt);
+      }
+      c.setTransform(dpr,0,0,dpr,0,0);
+      if (mode === "quest") drawQuest(elapsed);
+      else drawHome(elapsed);
+      if (dirtyStats) { updateHUD(); dirtyStats = false; }
+    }
+    function onClick(e) {
+      const t = e.target.closest("button");
+      if (!t) return;
+      if (t.dataset.view) return setView(t.dataset.view);
+      if (t.dataset.room) return setRoom(t.dataset.room);
+      if (t.dataset.action) return act(t.dataset.action);
+      if (t.dataset.food) return buyFood(t.dataset.food);
+      if (t.dataset.cloth) return buyCloth(t.dataset.cloth);
+      if (t.dataset.decor) return buyDecor(t.dataset.decor);
+      if (t.dataset.filter) { filter = t.dataset.filter; return renderPanel(); }
+      if (t.hasAttribute("data-careback")) { careMode = "actions"; return renderPanel(); }
+      if (t.dataset.startquest) return startQuest(t.dataset.startquest);
+      if (t.hasAttribute("data-cancelquest")) return cancelQuest();
+    }
+    function keyDown(e) {
+      const code = e.code || e.key;
+      if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(code)) e.preventDefault();
+      keys.add(code);
+    }
+    function keyUp(e) { keys.delete(e.code || e.key); }
+    function joyDown(e) {
+      e.preventDefault(); joystick.setPointerCapture?.(e.pointerId);
+      const r = joystick.getBoundingClientRect();
+      joy.pointer=e.pointerId;joy.active=true;joy.centerX=r.left+r.width/2;joy.centerY=r.top+r.height/2;
+      joyMove(e);
+    }
+    function joyMove(e) {
+      if (!joy.active || e.pointerId !== joy.pointer) return;
+      const dx=e.clientX-joy.centerX,dy=e.clientY-joy.centerY,len=Math.hypot(dx,dy)||1,cap=34;
+      const ratio=Math.min(1,cap/len);joy.x=dx/len*ratio;joy.y=dy/len*ratio;
+      knob.style.left=`calc(50% + ${joy.x*34}px)`;knob.style.top=`calc(50% + ${joy.y*34}px)`;
+    }
+    function joyUp(e) {
+      if(e.pointerId!==joy.pointer)return;
+      joy.active=false;joy.pointer=null;joy.x=0;joy.y=0;knob.style.left="50%";knob.style.top="50%";
+    }
+    function mapDown(e) {
+      if (mode !== "quest" || e.target.closest("[data-joystick]")) return;
+      const r=canvas.getBoundingClientRect();
+      mapTarget={x:e.clientX-r.left,y:e.clientY-r.top};
+    }
+    function pageHide() { save(); }
+    root.addEventListener("click",onClick);
+    window.addEventListener("keydown",keyDown,{passive:false});
+    window.addEventListener("keyup",keyUp);
+    window.addEventListener("pagehide",pageHide);
+    window.addEventListener("resize",resize);
+    canvas.addEventListener("pointerdown",mapDown);
+    joystick.addEventListener("pointerdown",joyDown);
+    joystick.addEventListener("pointermove",joyMove);
+    joystick.addEventListener("pointerup",joyUp);
+    joystick.addEventListener("pointercancel",joyUp);
+    if ("ResizeObserver" in window) {
+      const observer = new ResizeObserver(resize);
+      observer.observe(stage);
+      root._mbObserver = observer;
+    }
+    applyOfflineTime(); resize(); updateHUD(); renderPanel();
+    lastFrame=performance.now();raf=requestAnimationFrame(frame);
+    return {
+      restart() {
+        if(activeQuest){activeQuest=null;mode="home";}
+        view="home";room=ROOMS.some((r)=>r.id===state.room)?state.room:"living";
+        joy.x=0;joy.y=0;save();renderPanel();updateHUD();
+      },
+      destroy() {
+        destroyed=true;cancelAnimationFrame(raf);clearTimeout(toastTimer);clearTimeout(bubbleTimer);
+        root.removeEventListener("click",onClick);
+        window.removeEventListener("keydown",keyDown);window.removeEventListener("keyup",keyUp);
+        window.removeEventListener("pagehide",pageHide);window.removeEventListener("resize",resize);
+        canvas.removeEventListener("pointerdown",mapDown);
+        joystick.removeEventListener("pointerdown",joyDown);joystick.removeEventListener("pointermove",joyMove);
+        joystick.removeEventListener("pointerup",joyUp);joystick.removeEventListener("pointercancel",joyUp);
+        root._mbObserver?.disconnect();save();root.remove();css.remove();
+      }
+    };
+  }
+
+  G.games.push({
+    id: "myblue", name: "My Blue", tag: "Pet virtual · casă · aventuri",
+    dev: "Lingurar Marius",
+    desc: "Ai grijă de Blue, un ursuleț de pluș cu o căsuță numai a lui. Hrănește-l, spală-l, joacă-te, alege-i haine și decorează camerele. Pornește în questuri prin grădină sau condu până la magazin și întoarce-te cu provizii.",
+    cover: coverBlue, play: MyBlue, continueAfterScore: true
+  });
+})();
+=== FILE: app/src/main/assets/games.js ===
+/* =====================================================================
+   HiBlue · Games  (update0.0.2)
+   - camera Games: coperți, rating, dezvoltator
+   - detaliu joc (card care se extinde): Play, scor, rating, Top 10
+   - player + jocul Flyby
+   Joc nou = GAMES.push({id,name,tag,dev,desc,cover(k),play(host,api)})
+     play(host,api) -> {restart(),destroy()}
+     api: {over(score,secs), best(), hap(k)}   (over = joc terminat → platforma trimite scorul)
+   ===================================================================== */
+(function(){
+const X='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+const STAR='<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 17l-5.2 2.7 1-5.9L3.5 9.7l5.9-.8z"/></svg>';
+const PLAY='<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/></svg>';
+let UID=0;
+
+const css=document.createElement("style");css.textContent=`
+.gm{padding:6px 16px 8px}
+.gh{padding:14px 4px 14px}
+.gh h2{font-size:30px;font-weight:800;letter-spacing:-1px}
+.gh p{color:var(--mu);font-size:13.5px;margin-top:2px}
+.ggrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gcard{position:relative;display:block;width:100%;aspect-ratio:3/4;border-radius:22px;overflow:hidden;border:1px solid var(--ln);box-shadow:0 14px 40px rgba(0,0,0,.45);transition:transform .2s;text-align:left}
+.gcard:active{transform:scale(.97)}
+.gcv{position:absolute;inset:0}.gcv svg{width:100%;height:100%;display:block}
+.gci{position:absolute;left:0;right:0;bottom:0;padding:38px 12px 12px;background:linear-gradient(transparent,rgba(5,5,15,.94))}
+.gci b{display:block;font-size:17px;letter-spacing:-.3px}
+.gci small{display:block;color:#c3c3e8;font-size:11.5px}
+.gst{display:inline-flex;align-items:center;gap:4px;margin-top:5px;font-size:12px;font-weight:700}
+.gst i,.gavg i{display:inline-grid;font-style:normal;color:#fbbf24}
+.gst svg,.gavg svg{width:13px;height:13px;fill:currentColor}
+.gst em{font-style:normal;color:var(--mu);font-weight:500}
+.gcard.soon{display:grid;place-items:center;text-align:center;color:var(--mu);background:var(--sf);border-style:dashed;box-shadow:none;padding:16px;font-size:13px}
+.gcard.soon svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;display:block;margin:0 auto 8px;opacity:.7}
+.gbd{position:fixed;inset:0;z-index:200;background:rgba(2,2,10,.74);opacity:0;transition:opacity .3s;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.gbd.on{opacity:1}
+.gx{position:fixed;z-index:201;overflow:hidden;background:#0d0d26;border:1px solid var(--ln);box-shadow:0 30px 90px rgba(0,0,0,.7);transition:top .44s cubic-bezier(.2,.9,.25,1),left .44s cubic-bezier(.2,.9,.25,1),width .44s cubic-bezier(.2,.9,.25,1),height .44s cubic-bezier(.2,.9,.25,1),border-radius .44s}
+.gxbg{position:absolute;inset:0}.gxbg svg{width:100%;height:100%;display:block}
+.gxcl,.gxh,.gxc{opacity:0;transition:opacity .25s .2s}
+.gx.open .gxcl,.gx.open .gxh,.gx.open .gxc{opacity:1}
+.gxcl{position:absolute;top:12px;right:12px;z-index:3;background:rgba(5,5,15,.5);border:1px solid var(--ln)}
+.gxh{position:absolute;left:20px;right:60px;top:104px}
+.gxh h2{font-size:32px;font-weight:800;letter-spacing:-1px;text-shadow:0 2px 20px rgba(0,0,0,.6)}
+.gxh p{color:#d6d6f5;font-size:13.5px}
+.gxc{position:absolute;left:0;right:0;top:176px;bottom:0;background:#0d0d26;border-radius:26px 26px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.4)}
+.gxs{height:100%;overflow-y:auto;padding:18px 18px calc(var(--sab) + 20px)}
+.gpl{display:flex;gap:12px}
+.gpl .btn{flex:1;height:60px;font-size:18px}
+.gpl .btn svg{width:22px;height:22px}
+.gbest{width:118px;border-radius:18px;background:var(--sf);border:1px solid var(--ln);padding:8px 10px;text-align:center}
+.gbest small{display:block;font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--mu)}
+.gbest b{display:block;font-size:24px;font-weight:800;line-height:1.15}
+.gdesc{color:var(--mu);font-size:13.5px;margin:14px 2px 0}
+.gdev{display:flex;align-items:center;justify-content:space-between;margin-top:18px;padding:0 2px}
+.gdev small{display:block;font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--mu)}
+.gdev b{font-size:16px}
+.rbtn{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:var(--sf);border:1px solid var(--ln);color:#fbbf24;transition:.2s}
+.rbtn:active{transform:scale(.9)}
+.rbtn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round}
+.rbtn.has svg{fill:currentColor}
+.rate{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s ease}
+.rate>div{min-height:0;overflow:hidden}
+.rate.open{grid-template-rows:1fr}
+.rstars{display:flex;gap:4px;justify-content:center;padding:14px 0 2px}
+.rstars button{width:46px;height:46px;display:grid;place-items:center;color:#4a4a78;transition:.15s}
+.rstars button svg{width:32px;height:32px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linejoin:round}
+.rstars button.on{color:#fbbf24;transform:scale(1.06)}
+.rstars button.on svg{fill:currentColor}
+.rhint{text-align:center;color:var(--mu);font-size:12px;padding-bottom:4px}
+.gavg{display:flex;align-items:center;gap:6px;margin:12px 2px 0;font-size:14px}
+.gavg b{font-size:18px}.gavg span{color:var(--mu);font-size:13px}
+.gavg svg{width:16px;height:16px}
+.lr{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:14px}
+.lr.me{background:rgba(139,92,246,.16)}
+.lp{width:22px;text-align:center;font-weight:800;color:var(--mu)}
+.lp.p1{color:#fbbf24}.lp.p2{color:#cbd5e1}.lp.p3{color:#f59e0b}
+.la{width:34px;height:34px;border-radius:12px;background:var(--g);display:grid;place-items:center;font-weight:800;font-size:14px;flex:none}
+.ln{flex:1;min-width:0}
+.ln b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ln small{display:block;color:var(--mu);font-size:11.5px}
+.lsc{font-weight:800;font-size:17px}
+.gp{position:fixed;inset:0;z-index:250;background:#05050f}
+.gph{position:absolute;inset:0;touch-action:none}
+.gph canvas{display:block}
+.gpq{position:absolute;z-index:3;top:calc(var(--sat) + 10px);left:10px;background:rgba(5,5,15,.5);border:1px solid var(--ln)}
+.gpo{position:absolute;inset:0;z-index:4;display:grid;place-items:center;background:rgba(3,3,12,.68);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.gpo[hidden]{display:none}
+.gpc{width:min(86%,330px);padding:24px 22px 22px;border-radius:28px;text-align:center;background:linear-gradient(160deg,#17173d,#0b0b22);border:1px solid var(--ln);box-shadow:0 30px 80px rgba(0,0,0,.7);animation:rise .4s both}
+.gpc>small{letter-spacing:2.5px;font-weight:800;font-size:12px;color:#a5b4fc}
+.gps{font-size:82px;font-weight:800;letter-spacing:-3px;line-height:1.05;background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent}
+.gpb{color:var(--mu);font-size:14px}
+.gpt{font-size:13.5px;margin:12px 0 18px;min-height:20px;color:#e0e7ff}
+.gpbtn{display:flex;gap:10px}
+`;document.head.appendChild(css);
+
+/* ---------------- datele (Supabase) ---------------- */
+const R={sum:{},mine:{}};
+const GAMES=[];
+const starTxt=id=>{const s=R.sum[id];return s&&s.votes?`<i>${STAR}</i>${s.mean.toFixed(1)} <em>(${s.votes})</em>`:`<i>${STAR}</i>—`};
+function refreshCards(){GAMES.forEach(g=>document.querySelectorAll(`[data-sum="${g.id}"]`).forEach(e=>e.innerHTML=starTxt(g.id)))}
+async function loadSummary(){const r=await rest("/rest/v1/rpc/game_ratings_summary",{m:"POST",b:{}});
+ if(r.ok&&Array.isArray(r.j)){R.sum={};r.j.forEach(x=>R.sum[x.game_id]={mean:Number(x.mean),votes:x.votes});refreshCards()}}
+async function loadMine(){if(!SB.ses)return;const r=await rest("/rest/v1/game_ratings?user_id=eq."+SB.ses.uid+"&select=game_id,rating");
+ if(r.ok&&Array.isArray(r.j)){R.mine={};r.j.forEach(x=>R.mine[x.game_id]=x.rating)}}
+async function loadTop(id){const r=await rest("/rest/v1/rpc/game_top",{m:"POST",b:{p_game:id}});return r.ok&&Array.isArray(r.j)?r.j:null}
+async function submit(id,score,secs){const r=await rest("/rest/v1/rpc/submit_score",{m:"POST",b:{p_game:id,p_score:score,p_secs:secs}});return r.ok?r.j:null}
+const bestKey=id=>"best."+(SB.ses?SB.ses.uid:"x")+"."+id;
+const getBest=id=>+LS.get(bestKey(id))||0;
+
+/* ---------------- camera Games ---------------- */
+const cardHTML=g=>`<button class="gcard" data-g="${g.id}"><div class="gcv">${g.cover("c"+(++UID))}</div><div class="gci"><b>${esc(g.name)}</b><small>${esc(g.dev)}</small><span class="gst" data-sum="${g.id}">${starTxt(g.id)}</span></div></button>`;
+Rooms.games={
+ mount(el){
+  el.innerHTML=`<div class="gm"><div class="gh"><h2>Games</h2><p>Jocuri create în HiBlue</p></div><div class="ggrid">${GAMES.map(cardHTML).join("")}<div class="gcard soon"><div><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Mai multe jocuri în curând</div></div></div></div>`;
+  el.onclick=e=>{const c=e.target.closest(".gcard[data-g]");if(c)openDetail(c.dataset.g,c)}},
+ show(){loadSummary();loadMine()}
+};
+
+/* ---------------- detaliu (card extins) ---------------- */
+let D=null,P=null;
+const setRect=(el,t,l,w,h,r)=>{el.style.top=t+"px";el.style.left=l+"px";el.style.width=w+"px";el.style.height=h+"px";el.style.borderRadius=r+"px"};
+function detailHTML(g){return `<div class="gxbg">${g.cover("d"+(++UID))}</div>
+<button class="ib gxcl" data-x aria-label="Închide">${X}</button>
+<div class="gxh"><h2>${esc(g.name)}</h2><p>${esc(g.tag)}</p></div>
+<div class="gxc"><div class="gxs">
+ <div class="gpl"><button class="btn" data-play>${PLAY}<span>Play</span></button><div class="gbest"><small>Cel mai bun</small><b data-best>0</b><small data-rk>Top 10: —</small></div></div>
+ <p class="gdesc">${esc(g.desc)}</p>
+ <div class="gdev"><div><small>Dezvoltator</small><b>${esc(g.dev)}</b></div><button class="rbtn" data-rtg aria-label="Oferă rating">${STAR}</button></div>
+ <div class="rate" data-rate><div><div class="rstars">${[1,2,3,4,5].map(n=>`<button data-rv="${n}" aria-label="${n}">${STAR}</button>`).join("")}</div><p class="rhint">Atinge o stea pentru nota ta</p></div></div>
+ <div class="gavg" data-avg></div>
+ <div class="gt" style="margin:24px 4px 8px">Top 10</div><div class="lb" data-lb><p class="note">Se încarcă…</p></div>
+</div></div>`}
+function openDetail(id,card){const g=GAMES.find(x=>x.id==id);if(!g)return;closeDetail(true);
+ const r=card.getBoundingClientRect(),bd=document.createElement("div"),px=document.createElement("div");
+ bd.className="gbd";px.className="gx";px.innerHTML=detailHTML(g);document.body.append(bd,px);
+ D={g,px,bd};setRect(px,r.top,r.left,r.width,r.height,22);
+ bd.onclick=()=>closeDetail();
+ px.addEventListener("click",e=>{const T=e.target;
+  if(T.closest("[data-x]"))return closeDetail();
+  if(T.closest("[data-play]"))return openPlayer(g);
+  if(T.closest("[data-rtg]"))return px.querySelector("[data-rate]").classList.toggle("open");
+  const rv=T.closest("[data-rv]");if(rv)doRate(g,+rv.dataset.rv)});
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{
+  const W=innerWidth,H=innerHeight,sat=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat"))||0,sab=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sab"))||0;
+  const w=Math.min(W-28,430),h=Math.min(H-sat-sab-56,700);
+  setRect(px,Math.max(sat+14,(H-h)/2),(W-w)/2,w,h,28);bd.classList.add("on");px.classList.add("open")}));
+ fillDetail()}
+function closeDetail(instant){if(!D)return false;const d=D;D=null;d.px.classList.remove("open");d.bd.classList.remove("on");
+ const card=document.querySelector(`.gcard[data-g="${d.g.id}"]`);
+ if(card&&!instant){const r=card.getBoundingClientRect();setRect(d.px,r.top,r.left,r.width,r.height,22)}
+ setTimeout(()=>{d.px.remove();d.bd.remove()},instant||!ST.anim?0:450);return true}
+const lbHTML=(a,me)=>a.map(x=>{const n=x.username||x.handle||"Anonim";return `<div class="lr ${x.user_id==me?"me":""}"><span class="lp p${x.pos}">${x.pos}</span><span class="la">${esc((n[0]||"?").toUpperCase())}</span><div class="ln"><b>${esc(n)}${x.user_id==me?" · tu":""}</b>${x.handle?`<small>@${esc(x.handle)}</small>`:""}</div><span class="lsc">${x.score}</span></div>`}).join("");
+function paintRating(){const d=D;if(!d)return;const g=d.g,s=R.sum[g.id],m=R.mine[g.id]||0;
+ d.px.querySelector("[data-avg]").innerHTML=s&&s.votes?`<i>${STAR}</i><b>${s.mean.toFixed(1)}</b><span>media · ${s.votes} ${s.votes==1?"vot":"voturi"}</span>`:`<i>${STAR}</i><span>Încă fără voturi</span>`;
+ d.px.querySelectorAll("[data-rv]").forEach(b=>b.classList.toggle("on",+b.dataset.rv<=m));
+ d.px.querySelector("[data-rtg]").classList.toggle("has",m>0)}
+async function fillDetail(){const d=D;if(!d)return;const g=d.g,me=SB.ses&&SB.ses.uid;paintRating();
+ d.px.querySelector("[data-best]").textContent=getBest(g.id);
+ const top=await loadTop(g.id);if(D!==d)return;const lb=d.px.querySelector("[data-lb]");
+ if(top===null){lb.innerHTML='<p class="note">Clasamentul nu a putut fi încărcat. Verifică conexiunea sau rulează update0.0.2.sql.</p>';return}
+ lb.innerHTML=top.length?lbHTML(top,me):'<p class="note">Încă nimeni în Top 10. Fii primul!</p>';
+ const mine=top.find(x=>x.user_id==me);d.px.querySelector("[data-rk]").textContent=mine?"Top 10: #"+mine.pos:"Top 10: —";
+ if(mine&&mine.score>getBest(g.id)){LS.set(bestKey(g.id),mine.score);d.px.querySelector("[data-best]").textContent=mine.score}}
+async function doRate(g,n){const old=R.mine[g.id]||0;R.mine[g.id]=n;paintRating();
+ const r=await rest("/rest/v1/game_ratings?on_conflict=game_id,user_id",{m:"POST",h:{Prefer:"resolution=merge-duplicates,return=minimal"},b:{game_id:g.id,user_id:SB.ses.uid,rating:n}});
+ if(!r.ok){R.mine[g.id]=old;paintRating();toast("Ratingul nu a putut fi salvat");return}
+ toast("Mulțumim pentru notă");await loadSummary();paintRating();
+ setTimeout(()=>{if(D){const e=D.px.querySelector("[data-rate]");if(e)e.classList.remove("open")}},450)}
+
+/* ---------------- player ---------------- */
+function openPlayer(g){if(P)return;const el=document.createElement("div");el.className="gp";
+ el.innerHTML=`<div class="gph"></div><button class="ib gpq" data-gpx aria-label="Ieși">${X}</button><div class="gpo" hidden></div>`;document.body.appendChild(el);
+ P={g,el,inst:null};
+ P.inst=g.play(el.querySelector(".gph"),{best:()=>getBest(g.id),hap:k=>hap(k),over:(s,t)=>onOver(g,s,t)});
+ el.addEventListener("click",e=>{const T=e.target;
+  if(T.closest("[data-gpx]")||T.closest('[data-gp="exit"]'))return closePlayer();
+  if(T.closest('[data-gp="continue"]')){el.querySelector(".gpo").hidden=true;return}
+  if(T.closest('[data-gp="again"]')){el.querySelector(".gpo").hidden=true;P.inst.restart()}})}
+function closePlayer(){if(!P)return false;const p=P;P=null;try{p.inst.destroy()}catch(e){}p.el.remove();if(D)fillDetail();return true}
+async function onOver(g,score,secs){if(!P||P.g!==g)return;const prev=getBest(g.id),rec=score>prev,keep=!!g.continueAfterScore;if(rec)LS.set(bestKey(g.id),score);
+ const o=P.el.querySelector(".gpo"),heading=keep?"QUEST REUȘIT!":rec&&score>0?"RECORD NOU":"GAME OVER",action=keep?"continue":"again",actionText=keep?"Continuă":"Din nou";
+ o.innerHTML=`<div class="gpc"><small>${heading}</small><div class="gps">${score}</div><p class="gpb">${keep?"Puncte pentru clasament":"Cel mai bun"}: ${Math.max(prev,score)}</p><p class="gpt">${score>0?"Se verifică Top 10…":"Atinge „Din nou” și încearcă iar"}</p><div class="gpbtn"><button class="btn sm ghost" data-gp="exit">Ieși</button><button class="btn sm" data-gp="${action}">${actionText}</button></div></div>`;
+ o.hidden=false;if(score<=0)return;
+ const r=await submit(g.id,score,secs),t=o.querySelector(".gpt");if(!t)return;
+ if(!r)t.textContent=keep?"Scorul nu s-a sincronizat. Monedele sunt salvate pe telefon.":"Scorul nu a putut fi trimis (offline sau lipsește update0.0.2.sql)";
+ else if(r.in_top)t.textContent=r.improved?`Top 10 · locul #${r.rank}`:`Rămâi pe locul #${r.rank} în Top 10 (${r.best})`;
+ else t.textContent=`Ai nevoie de peste ${r.min} puncte pentru Top 10`}
+
+window.GM={games:GAMES,
+ back(){if(P)return closePlayer();if(D)return closeDetail();return false},
+ reset(){if(P)closePlayer();closeDetail(true);R.sum={};R.mine={}}};
+
+/* =====================================================================
+   FLYBY – original: ghidezi o navă printre porțile de energie. Atingi = urci.
+   Scor = porți depășite (progres). Viteza crește, golul se strânge.
+   ===================================================================== */
+const coverFlyby=k=>`<svg viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice"><defs>
+<linearGradient id="${k}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#150b43"/><stop offset=".6" stop-color="#2b1a7c"/><stop offset="1" stop-color="#0a2a6e"/></linearGradient>
+<linearGradient id="${k}p" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0abfc"/><stop offset="1" stop-color="#6366f1"/></linearGradient>
+<linearGradient id="${k}g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3b1d8f"/><stop offset=".5" stop-color="#7c3aed"/><stop offset="1" stop-color="#4338ca"/></linearGradient>
+<linearGradient id="${k}s" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c084fc"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+<radialGradient id="${k}l"><stop offset="0" stop-color="#22d3ee" stop-opacity=".55"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/></radialGradient></defs>
+<rect width="300" height="400" fill="url(#${k}b)"/>
+<g fill="#fff"><circle cx="30" cy="40" r="1.4" opacity=".8"/><circle cx="82" cy="110" r="1" opacity=".6"/><circle cx="160" cy="30" r="1.2" opacity=".7"/><circle cx="268" cy="190" r="1.3" opacity=".6"/><circle cx="40" cy="300" r="1.1" opacity=".6"/><circle cx="210" cy="350" r="1.5" opacity=".7"/><circle cx="120" cy="240" r=".9" opacity=".5"/><circle cx="250" cy="300" r="1" opacity=".5"/></g>
+<circle cx="236" cy="96" r="56" fill="url(#${k}p)" opacity=".92"/>
+<ellipse cx="236" cy="96" rx="92" ry="16" fill="none" stroke="#f5d0fe" stroke-opacity=".55" stroke-width="3" transform="rotate(-18 236 96)"/>
+<rect x="118" y="-30" width="68" height="198" rx="20" fill="url(#${k}g)"/><rect x="118" y="268" width="68" height="190" rx="20" fill="url(#${k}g)"/>
+<path d="M126 168h52M126 268h52" stroke="#67e8f9" stroke-width="3" stroke-linecap="round"/>
+<path d="M-10 232h70M10 246h46M-4 220h40" stroke="#67e8f9" stroke-opacity=".45" stroke-width="3" stroke-linecap="round"/>
+<g transform="translate(86 218) rotate(-7)"><circle r="46" fill="url(#${k}l)"/><path d="M30 0L-16-15-7 0-16 15z" fill="url(#${k}s)"/><circle cx="5" r="3" fill="#fff"/></g></svg>`;
+
+function Flyby(host,api){
+ const cv=document.createElement("canvas"),c=cv.getContext("2d");host.appendChild(cv);
+ const GR=1480,BOOST=-420,RAD=10,GW=60,SP=240,M=76;
+ let W,H,dpr,top0=0,S,ship,gates,parts,stars,score,speed,t,tot=0,dist=0,raf,last,lastCY,deadT,flash,shake,pop,ovr;
+ function size(){dpr=Math.min(window.devicePixelRatio||1,2.5);W=host.clientWidth;H=host.clientHeight;cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);cv.style.width=W+"px";cv.style.height=H+"px";c.setTransform(dpr,0,0,dpr,0,0);
+  top0=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat"))||0;
+  stars=[];for(let i=0;i<70;i++){const l=Math.random();stars.push({x:Math.random()*W,y:Math.random()*H,r:.6+l*1.4,l:.15+l*.85,a:.3+Math.random()*.6})}}
+ function reset(){ship={x:W*.3,y:H*.46,vy:0,rot:0};gates=[];parts=[];score=0;speed=190;t=0;dist=0;deadT=0;flash=0;shake=0;pop=0;ovr=false;lastCY=H/2;S="ready";spawn()}
+ const gapNow=()=>Math.max(132,196-score*1.6);
+ function spawn(){let lx=gates.length?gates[gates.length-1].x:W*.3+SP*.8;
+  while(lx<W+SP){lx+=SP;const gap=gapNow();let cy=lastCY+(Math.random()*2-1)*150;cy=Math.max(M+gap/2,Math.min(H-M-gap/2,cy));lastCY=cy;gates.push({x:lx,cy,gap,p:0})}}
+ function burst(x,y,n,col,spd){for(let i=0;i<n;i++){const a=Math.random()*6.283,v=(.3+Math.random())*spd;parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:1,d:.6+Math.random()*.7,s:1.5+Math.random()*2.5,c:col})}}
+ function die(){if(S!="play")return;S="dead";deadT=0;flash=1;shake=1;burst(ship.x,ship.y,28,"#c4b5fd",280);burst(ship.x,ship.y,18,"#67e8f9",200);api.hap&&api.hap(2)}
+ function update(dt){tot+=dt;
+  stars.forEach(s=>{s.x-=(S=="play"?speed:36)*s.l*.2*dt;if(s.x<-2){s.x=W+2;s.y=Math.random()*H}});
+  if(S=="ready"){ship.y=H*.46+Math.sin(tot*3)*9;ship.rot=Math.sin(tot*3)*.08}
+  else if(S=="play"){
+   t+=dt;speed=Math.min(340,190+score*4.2);dist+=speed*dt;
+   ship.vy+=GR*dt;ship.y+=ship.vy*dt;ship.rot=Math.max(-.5,Math.min(1.1,ship.vy/520));
+   if(ship.y<RAD){ship.y=RAD;if(ship.vy<0)ship.vy=0}
+   gates.forEach(g=>{g.x-=speed*dt});
+   parts.push({x:ship.x-10,y:ship.y,vx:-70-Math.random()*40,vy:(Math.random()-.5)*30,l:1,d:.45,s:2.4,c:"#67e8f9"});
+   for(const g of gates){
+    if(!g.p&&g.x+GW/2<ship.x-RAD){g.p=1;score++;pop=1;api.hap&&api.hap(0)}
+    if(Math.abs(g.x-ship.x)<GW/2+RAD){const a=g.cy-g.gap/2,b=g.cy+g.gap/2;if(ship.y-RAD<a||ship.y+RAD>b){die();break}}}
+   if(S=="play"&&ship.y>H-RAD)die();
+   if(S=="play"){gates=gates.filter(g=>g.x>-GW);spawn()}}
+  else if(S=="dead"){deadT+=dt;if(deadT>.75&&!ovr){ovr=true;api.over(score,Math.round(t))}}
+  parts.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.l-=dt/p.d});parts=parts.filter(p=>p.l>0);
+  pop=Math.max(0,pop-dt*4);flash=Math.max(0,flash-dt*3);shake=Math.max(0,shake-dt*2.2)}
+ function rr(x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
+ function txt(s,x,y,size,al){c.font="800 "+size+"px ui-rounded,system-ui,sans-serif";c.textAlign="center";c.fillStyle="rgba(255,255,255,"+al+")";c.fillText(s,x,y)}
+ function draw(){c.save();
+  if(shake>0)c.translate((Math.random()-.5)*10*shake,(Math.random()-.5)*10*shake);
+  const bg=c.createLinearGradient(0,0,0,H);bg.addColorStop(0,"#080a22");bg.addColorStop(.55,"#1a0f3f");bg.addColorStop(1,"#0a1d46");c.fillStyle=bg;c.fillRect(-20,-20,W+40,H+40);
+  const L=W+300,px=((W*.8-dist*.05)%L+L)%L-150,py=H*.2;
+  const pg=c.createLinearGradient(px-70,py-70,px+70,py+70);pg.addColorStop(0,"#f0abfc");pg.addColorStop(1,"#4f46e5");c.globalAlpha=.55;c.fillStyle=pg;c.beginPath();c.arc(px,py,64,0,6.283);c.fill();
+  c.strokeStyle="rgba(245,208,254,.6)";c.lineWidth=3;c.beginPath();c.ellipse(px,py,100,17,-.3,0,6.283);c.stroke();c.globalAlpha=1;
+  stars.forEach(s=>{c.fillStyle="rgba(255,255,255,"+s.a*s.l+")";c.beginPath();c.arc(s.x,s.y,s.r,0,6.283);c.fill()});
+  gates.forEach(g=>{const a=g.cy-g.gap/2,b=g.cy+g.gap/2,x=g.x-GW/2;
+   const gr=c.createLinearGradient(x,0,x+GW,0);gr.addColorStop(0,"#3b1d8f");gr.addColorStop(.5,"#6d28d9");gr.addColorStop(1,"#4338ca");
+   c.shadowColor="rgba(129,140,248,.55)";c.shadowBlur=16;c.fillStyle=gr;rr(x,-30,GW,a+30,16);c.fill();rr(x,b,GW,H-b+30,16);c.fill();c.shadowBlur=0;
+   c.strokeStyle="rgba(103,232,249,.9)";c.lineWidth=2;c.lineCap="round";c.beginPath();c.moveTo(x+9,a-1);c.lineTo(x+GW-9,a-1);c.moveTo(x+9,b+1);c.lineTo(x+GW-9,b+1);c.stroke();
+   const bm=c.createLinearGradient(0,a,0,b);bm.addColorStop(0,"rgba(103,232,249,0)");bm.addColorStop(.5,"rgba(103,232,249,.12)");bm.addColorStop(1,"rgba(103,232,249,0)");c.fillStyle=bm;c.fillRect(g.x-1.5,a,3,b-a)});
+  parts.forEach(p=>{c.globalAlpha=Math.max(0,p.l);c.fillStyle=p.c;c.beginPath();c.arc(p.x,p.y,p.s*p.l+.5,0,6.283);c.fill()});c.globalAlpha=1;
+  if(S!="dead"){c.save();c.translate(ship.x,ship.y);c.rotate(ship.rot);c.shadowColor="rgba(34,211,238,.9)";c.shadowBlur=18;
+   const sg=c.createLinearGradient(-14,0,16,0);sg.addColorStop(0,"#c084fc");sg.addColorStop(1,"#22d3ee");c.fillStyle=sg;
+   c.beginPath();c.moveTo(16,0);c.lineTo(-12,-10);c.lineTo(-6,0);c.lineTo(-12,10);c.closePath();c.fill();c.shadowBlur=0;
+   c.fillStyle="#fff";c.beginPath();c.arc(3,0,2.2,0,6.283);c.fill();c.restore()}
+  c.shadowColor="rgba(0,0,0,.5)";c.shadowBlur=10;
+  if(S!="dead")txt(score,W/2,top0+92,58+pop*12,1);
+  if(S=="ready"){txt("Atinge pentru a zbura",W/2,H*.68,22,.95);txt("Treci prin porțile de energie",W/2,H*.68+26,14,.6);const b=api.best?api.best():0;if(b)txt("Cel mai bun: "+b,W/2,H*.68+54,14,.6)}
+  if(S=="pause")txt("Atinge pentru a continua",W/2,H*.5,22,.95);
+  c.shadowBlur=0;
+  if(flash>0){c.fillStyle="rgba(255,255,255,"+flash*.45+")";c.fillRect(-20,-20,W+40,H+40)}
+  c.restore()}
+ function loop(now){raf=requestAnimationFrame(loop);const dt=Math.min(.033,(now-last)/1000||0);last=now;update(dt);draw()}
+ function down(e){e.preventDefault();
+  if(S=="ready"){S="play";ship.vy=BOOST;burst(ship.x-8,ship.y+4,6,"#67e8f9",100)}
+  else if(S=="play"){ship.vy=BOOST;burst(ship.x-8,ship.y+4,5,"#67e8f9",90)}
+  else if(S=="pause"){S="play"}}
+ const vis=()=>{if(document.hidden&&S=="play")S="pause"};
+ const rs=()=>{const sc=W?ship.x/W:.3;size();ship.x=W*sc};
+ size();reset();host.addEventListener("pointerdown",down);document.addEventListener("visibilitychange",vis);window.addEventListener("resize",rs);
+ last=performance.now();raf=requestAnimationFrame(loop);
+ return{restart(){reset()},destroy(){cancelAnimationFrame(raf);host.removeEventListener("pointerdown",down);document.removeEventListener("visibilitychange",vis);window.removeEventListener("resize",rs);cv.remove()}}
+}
+
+GAMES.push({id:"flyby",name:"Flyby",tag:"Zboară cât mai departe",dev:"Lingurar Marius",
+ desc:"Atinge ecranul ca să urci, treci prin porțile de energie și ajunge cât mai departe. Cu cât mergi mai departe, cu atât viteza crește și golul se strânge.",
+ cover:coverFlyby,play:Flyby});
+})();
+=== FILE: app/src/main/assets/index.html ===
+<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#05050f"><title>HiBlue</title>
+<style>
+:root{--bg:#05050f;--sf:rgba(255,255,255,.055);--sf2:rgba(255,255,255,.1);--ln:rgba(255,255,255,.1);--tx:#f5f5ff;--mu:#9d9dc4;--v:#8b5cf6;--bad:#ff6b8a;--ok:#34d399;--g:linear-gradient(135deg,#c084fc 0%,#6366f1 48%,#22d3ee 100%);--hh:58px;--nh:68px;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font:15px/1.4 ui-rounded,"SF Pro Rounded",system-ui,Roboto,sans-serif;-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input{-webkit-user-select:text;user-select:text;font:inherit;color:inherit;outline:0;border:0;background:none;width:100%;min-width:0}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-action:manipulation;text-align:inherit}
+.aurora{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.aurora i{position:absolute;border-radius:50%;filter:blur(72px);opacity:.5;animation:drift 18s ease-in-out infinite alternate}
+.aurora i:nth-child(1){width:330px;height:330px;background:#6d28d9;top:-100px;left:-110px}
+.aurora i:nth-child(2){width:300px;height:300px;background:#1d4ed8;bottom:-90px;right:-110px;animation-delay:-6s}
+.aurora i:nth-child(3){width:220px;height:220px;background:#0891b2;top:44%;left:56%;opacity:.25;animation-delay:-12s}
+@keyframes drift{to{transform:translate(40px,50px) scale(1.15)}}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes pulse{50%{opacity:.5;transform:scale(1.1)}}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes fade{to{opacity:1}}
+@keyframes fadeIn{from{opacity:0}}
+@keyframes orbit{to{transform:rotate(360deg)}}
+.noanim *,.noanim *:before,.noanim *:after{animation:none!important;transition:none!important}
+/* ---- logo ---- */
+.wm{display:inline-flex;font-size:21px;line-height:1;letter-spacing:-.03em;white-space:nowrap;color:#fff}
+.wm b{font-weight:300}
+.wm em{font-style:normal;font-weight:800;background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent}
+.wm.xl{font-size:44px}
+.mk{display:block;width:100%;height:100%}
+.draw .mk-b{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.3s .25s cubic-bezier(.5,0,.2,1) forwards}
+.draw .mk-r{opacity:0;animation:fade 1s 1s forwards}
+.draw .mk-d{opacity:0;transform-origin:54px 54px;animation:fade .5s 1.5s forwards,orbit 9s linear 1.5s infinite}
+.noanim .draw .mk-b{stroke-dashoffset:0}.noanim .draw .mk-r,.noanim .draw .mk-d{opacity:1}.noanim .sp-wm{opacity:1}
+/* ---- splash ---- */
+#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);transition:opacity .6s,visibility .6s}
+#splash.out{opacity:0;visibility:hidden}
+.sp-mark{position:relative;width:150px;height:150px}
+.sp-mark:before{content:"";position:absolute;inset:-50px;border-radius:50%;background:radial-gradient(closest-side,rgba(99,102,241,.5),rgba(34,211,238,.1) 70%,transparent);animation:pulse 2.6s ease-in-out infinite}
+.sp-mark .mk{position:relative}
+.sp-wm{margin-top:30px;opacity:0;animation:rise .8s 1.3s both}
+/* ---- auth ---- */
+#auth{position:fixed;inset:0;z-index:50;display:none;overflow-y:auto;padding:calc(var(--sat) + 22px) 20px calc(var(--sab) + 24px)}
+#auth.on{display:block}
+.au{max-width:420px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;justify-content:center}
+.au-top{text-align:center;margin-bottom:24px;animation:rise .7s both}
+.logo{width:92px;height:92px;margin:0 auto 18px;border-radius:30px;display:grid;place-items:center;background:linear-gradient(160deg,rgba(255,255,255,.09),rgba(255,255,255,.02));border:1px solid var(--ln);box-shadow:0 14px 50px rgba(99,102,241,.35),inset 0 1px 0 rgba(255,255,255,.1)}
+.logo .mk{width:72px;height:72px}
+.tag{color:var(--mu);margin-top:10px;font-size:14px}
+.card{background:linear-gradient(160deg,rgba(255,255,255,.085),rgba(255,255,255,.035));border:1px solid var(--ln);border-radius:28px;padding:20px;-webkit-backdrop-filter:blur(26px);backdrop-filter:blur(26px);box-shadow:0 24px 70px rgba(0,0,0,.5);animation:rise .7s .12s both}
+.seg{position:relative;display:flex;background:rgba(0,0,0,.35);border:1px solid var(--ln);border-radius:16px;padding:4px;margin-bottom:18px}
+.seg .th{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:12px;background:var(--g);box-shadow:0 6px 20px rgba(99,102,241,.45);transition:transform .35s cubic-bezier(.3,1.2,.4,1)}
+.seg button{position:relative;flex:1;padding:10px 0;font-weight:700;font-size:14px;color:var(--mu);transition:color .25s;text-align:center}
+.seg button.on{color:#fff}
+.up .seg .th{transform:translateX(100%)}
+.fup{display:grid;grid-template-rows:0fr;transition:grid-template-rows .38s ease}
+.fup>div{min-height:0;overflow:hidden}
+.up .fup{grid-template-rows:1fr}
+.fld{position:relative;display:flex;align-items:center;gap:10px;height:54px;padding:0 14px;margin-bottom:12px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid var(--ln);color:var(--mu);transition:.2s}
+.fld:focus-within{border-color:var(--v);color:#c4b5fd;box-shadow:0 0 0 4px rgba(139,92,246,.18);background:rgba(255,255,255,.08)}
+.fld svg,.ib svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.fld input{color:var(--tx);font-size:15.5px}
+.fld input::placeholder{color:#7b7ba3}
+.fld .eye{display:grid;place-items:center;width:34px;height:34px;margin-right:-8px;color:var(--mu)}
+.fld .st{font-size:13px;font-weight:700;white-space:nowrap}
+.st.ok{color:var(--ok)}.st.no{color:var(--bad)}
+.hint{font-size:12px;color:var(--mu);margin:-4px 4px 12px}
+.msg{min-height:20px;font-size:13.5px;margin:2px 4px 10px;color:var(--bad)}
+.msg.info{color:#a5f3fc}
+.msg.shake{animation:shake .4s}
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;height:54px;border-radius:16px;background:var(--g);font-weight:800;font-size:16px;color:#fff;text-align:center;box-shadow:0 10px 30px rgba(99,102,241,.5);transition:transform .15s,opacity .2s}
+.btn:active{transform:scale(.97)}
+.btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn.sm{height:44px;font-size:14px;flex:1;box-shadow:none}
+.btn.ghost{background:var(--sf2);border:1px solid var(--ln)}
+.btn.dng{background:linear-gradient(135deg,#fb7185,#e11d48)}
+.btn.busy{opacity:.8;pointer-events:none;color:transparent}
+.btn.busy:after{content:"";position:absolute;inset:0;margin:auto;width:22px;height:22px;border-radius:50%;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;animation:spin .7s linear infinite}
+/* ---- aplicația ---- */
+#app{position:fixed;inset:0;z-index:10;display:none;flex-direction:column}
+#app.on{display:flex;animation:rise .5s both}
+.hd{position:relative;z-index:20;flex:none;height:calc(var(--hh) + var(--sat));padding:var(--sat) 8px 0 6px;display:flex;align-items:center;gap:2px;background:linear-gradient(rgba(5,5,15,.92),rgba(5,5,15,.62));-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,.06)}
+.ib{position:relative;flex:none;width:42px;height:42px;border-radius:14px;display:grid;place-items:center;color:#d4d4fa;transition:.18s}
+.ib:active{background:var(--sf2);transform:scale(.9)}
+.ib svg{width:23px;height:23px;stroke-width:1.9}
+.ib .dot{position:absolute;top:9px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--g);box-shadow:0 0 0 2px var(--bg)}
+.hd .wm{margin-left:4px}
+.mid{flex:1;min-width:0;display:flex;justify-content:flex-end;padding:0 6px}
+.srch{display:flex;align-items:center;gap:8px;width:100%;max-width:190px;height:36px;padding:0 12px;border-radius:18px;background:var(--sf);border:1px solid var(--ln);color:var(--mu);animation:rise .3s both}
+.srch[hidden]{display:none}
+.srch svg{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.srch input{font-size:14px;color:var(--tx)}
+#stage{position:relative;flex:1;min-height:0}
+.room{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding-bottom:calc(var(--nh) + 30px + var(--sab));opacity:0;visibility:hidden;transform:translateY(10px);transition:opacity .28s,transform .28s,visibility .28s}
+.room.on{opacity:1;visibility:visible;transform:none}
+.empty{height:100%;min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:var(--mu);padding:0 40px}
+.empty .ring{width:84px;height:84px;border-radius:28px;display:grid;place-items:center;background:var(--sf);border:1px solid var(--ln);box-shadow:0 0 46px rgba(99,102,241,.3);margin-bottom:6px}
+.empty .ring svg{width:36px;height:36px;fill:none;stroke:url(#gr);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.empty h2{font-size:19px;color:var(--tx);letter-spacing:-.3px}
+.empty p{font-size:13px}
+.nav{position:fixed;z-index:30;left:12px;right:12px;bottom:calc(10px + var(--sab));height:var(--nh);display:flex;border-radius:28px;background:rgba(14,14,34,.74);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid var(--ln);box-shadow:0 14px 44px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.07)}
+.tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:700;color:var(--mu);transition:color .25s;text-align:center}
+.tb .ic{width:48px;height:30px;border-radius:15px;display:grid;place-items:center;transition:.35s cubic-bezier(.3,1.3,.4,1)}
+.tb svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tb:active .ic{transform:scale(.9)}
+.tb.on{color:#fff}
+.tb.on .ic{background:rgba(139,92,246,.2);box-shadow:0 0 24px rgba(99,102,241,.45);transform:translateY(-1px)}
+.tb.on svg{stroke:url(#gr)}
+/* ---- drawer ---- */
+.shade{position:fixed;inset:0;z-index:60;background:rgba(2,2,10,.6);opacity:0;visibility:hidden;transition:.3s}
+.dr{position:fixed;z-index:61;top:0;bottom:0;left:0;width:min(84%,330px);display:flex;flex-direction:column;padding:calc(var(--sat) + 20px) 14px calc(var(--sab) + 16px);background:linear-gradient(180deg,#0d0d26,#07071a);border-right:1px solid var(--ln);box-shadow:20px 0 60px rgba(0,0,0,.6);transform:translateX(-102%);transition:transform .36s cubic-bezier(.3,.9,.3,1);overflow-y:auto}
+.drawer.open .shade{opacity:1;visibility:visible}
+.drawer.open .dr{transform:none}
+.dh{padding:2px 8px 18px}
+.dh .wm{font-size:26px}
+.grow{flex:1}
+.di{display:flex;align-items:center;gap:13px;width:100%;padding:11px 10px;border-radius:16px;transition:background .15s}
+.di:active{background:var(--sf2)}
+.di .ri,.row .ri{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:rgba(139,92,246,.16);color:#c4b5fd;flex:none}
+.di .ri svg,.row .ri svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.di .dt{flex:1;font-weight:600;font-size:15.5px}
+.di .dt small{display:block;font-weight:400;font-size:12px;color:var(--mu)}
+.di .ch{display:grid;place-items:center;transition:transform .3s}
+.di .ch svg,.row .ch svg{width:18px;height:18px;fill:none;stroke:var(--mu);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.di.open .ch{transform:rotate(90deg)}
+.di.s{padding-left:26px}
+.sub{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s ease}
+.sub>div{min-height:0;overflow:hidden}
+.sub.open{grid-template-rows:1fr}
+.acc{display:flex;align-items:center;gap:12px;width:100%;padding:12px;border-radius:18px;background:var(--sf);border:1px solid var(--ln)}
+.acc .av,.usr .av{width:42px;height:42px;border-radius:14px;background:var(--g);display:grid;place-items:center;font-weight:800;font-size:18px;flex:none}
+.acc b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acc small{color:var(--mu);font-size:12px}
+.acc div{min-width:0}
+/* ---- pagini ---- */
+.pg{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;background:radial-gradient(120% 60% at 50% -10%,#14123a,var(--bg) 60%);transform:translateX(26px);opacity:0;transition:transform .3s,opacity .3s}
+.pg.in{transform:none;opacity:1}
+.ph{flex:none;display:flex;align-items:center;gap:6px;height:calc(var(--hh) + var(--sat));padding:var(--sat) 12px 0 6px;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(5,5,15,.9)}
+.ph h1{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.pb{flex:1;overflow-y:auto;padding:16px 16px calc(var(--sab) + 28px)}
+.grp{margin-bottom:20px}
+.gt{font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--mu);margin:0 6px 8px}
+.rows{border-radius:20px;background:var(--sf);border:1px solid var(--ln);overflow:hidden}
+.row{display:flex;align-items:center;gap:13px;width:100%;padding:13px 14px;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer}
+.row:last-child{border-bottom:0}
+.row:active{background:var(--sf2)}
+.row .rt{flex:1;min-width:0}
+.row .rt b{display:block;font-weight:600;font-size:15px}
+.row .rt small{color:var(--mu);font-size:12.5px}
+.row .rv{color:var(--mu);font-size:13.5px}
+.row .ch{display:grid;place-items:center}
+.row.danger .rt b{color:#ffb4c4}.row.danger .ri{background:rgba(255,107,138,.14);color:#ff9db3}
+.sw{width:46px;height:28px;border-radius:14px;background:rgba(255,255,255,.14);position:relative;transition:.25s;flex:none}
+.sw:after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.25s;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.tg.on .sw{background:var(--g)}.tg.on .sw:after{transform:translateX(18px)}
+.note{color:var(--mu);font-size:13px;text-align:center;padding:10px 12px}
+.chip{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--sf2);color:var(--mu)}
+.chip.ok{background:rgba(52,211,153,.14);color:var(--ok)}
+.src{padding:16px;margin-bottom:14px;border-radius:22px;background:var(--sf);border:1px solid var(--ln)}
+.src .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.src .sh b{font-size:16px}
+.src>p{color:var(--mu);font-size:13px;margin-bottom:12px}
+.src .sb{display:flex;gap:10px}
+.src .ss{font-size:12.5px;color:var(--mu);margin-top:10px;min-height:16px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{padding:16px;border-radius:20px;background:var(--sf);border:1px solid var(--ln)}
+.stat b{display:block;font-size:28px;font-weight:800;letter-spacing:-1px;background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat small{color:var(--mu);font-size:12.5px}
+.usr{display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:18px;background:var(--sf);border:1px solid var(--ln)}
+.usr .ui{flex:1;min-width:0}
+.usr .ui b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.usr .ui b i{font-style:normal;color:#a5b4fc;font-weight:500}
+.usr .ui small{display:block;color:var(--mu);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.usr .del{color:#ff9db3}
+.about{text-align:center;padding-top:30px}
+.about .logo{width:110px;height:110px}.about .logo .mk{width:86px;height:86px}
+.about p{color:var(--mu);margin-top:8px;font-size:13.5px}
+.mdl{position:fixed;inset:0;z-index:300;display:grid;place-items:center;padding:24px;background:rgba(2,2,10,.7);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:fadeIn .2s both}
+.mc{width:100%;max-width:340px;padding:22px;border-radius:24px;background:#10102b;border:1px solid var(--ln);box-shadow:0 30px 80px rgba(0,0,0,.7)}
+.mc h3{font-size:18px;margin-bottom:6px}.mc p{color:var(--mu);font-size:14px;margin-bottom:18px}
+.mb{display:flex;gap:10px}
+.toast{position:fixed;z-index:400;left:50%;bottom:calc(var(--nh) + 36px + var(--sab));transform:translate(-50%,20px);padding:11px 18px;border-radius:16px;background:rgba(20,20,48,.95);border:1px solid var(--ln);font-size:13.5px;opacity:0;transition:.3s;pointer-events:none;max-width:86%;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<linearGradient id="gr" gradientUnits="userSpaceOnUse" x1="2" y1="2" x2="22" y2="22"><stop offset="0" stop-color="#c084fc"/><stop offset=".55" stop-color="#6366f1"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+<linearGradient id="mkG" gradientUnits="userSpaceOnUse" x1="34" y1="28" x2="72" y2="80"><stop offset="0" stop-color="#c084fc"/><stop offset=".55" stop-color="#6366f1"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+</defs></svg>
+<div class="aurora"><i></i><i></i><i></i></div>
+
+<div id="splash"><div class="sp-mark" data-mark="draw"></div><div class="sp-wm" data-wm="xl"></div></div>
+
+<section id="auth"><div class="au" id="authBox">
+ <div class="au-top"><div class="logo" data-mark></div><div data-wm="xl"></div><p class="tag">Bine ai venit.</p></div>
+ <div class="card">
+  <div class="seg"><i class="th"></i><button class="on" data-m="in">Autentificare</button><button data-m="up">Înregistrare</button></div>
+  <div class="fup"><div>
+   <label class="fld"><span data-i="user" style="display:contents"></span><input id="nm" placeholder="Nume afișat" maxlength="32" autocomplete="nickname" autocapitalize="words"></label>
+   <label class="fld"><span data-i="at" style="display:contents"></span><input id="hd" placeholder="utilizator (unic)" maxlength="20" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"><span class="st" id="hst"></span></label>
+   <p class="hint">Litere mici, cifre, _ sau . (3–20 caractere)</p>
+  </div></div>
+  <label class="fld"><span data-i="mail" style="display:contents"></span><input id="em" type="email" inputmode="email" placeholder="Email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false"></label>
+  <label class="fld"><span data-i="lock" style="display:contents"></span><input id="pw" type="password" placeholder="Parolă (minim 6 caractere)" autocomplete="current-password"><button type="button" class="eye" id="eye" aria-label="Arată parola"></button></label>
+  <p class="msg" id="msg"></p>
+  <button class="btn" id="go">Intră</button>
+ </div>
+</div></section>
+
+<div id="app">
+ <header class="hd">
+  <button class="ib" data-act="menu" aria-label="Meniu" data-i="menu"></button>
+  <div data-wm></div>
+  <div class="mid"><div class="srch" id="srch" hidden><span data-i="search" style="display:contents"></span><input placeholder="Caută…" aria-label="Caută"></div></div>
+  <button class="ib" data-act="bell" id="bellB" aria-label="Notificări"></button>
+  <button class="ib" data-act="music" aria-label="Player muzical" data-i="music"></button>
+ </header>
+ <main id="stage"></main>
+ <nav class="nav" id="nav"></nav>
+</div>
+
+<div class="drawer" id="drawer"><div class="shade" data-act="close"></div><aside class="dr" id="dr"></aside></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   HiBlue · update0.0.3
+   Camere (bara de jos) · Drawer · Pagini · Setări · Admin · Full screen
+   ===================================================================== */
+const APP_VERSION="0.0.3";
+const ADMIN_EMAIL="lingurarmarius444@gmail.com";
+const CFG={url:"https://buuqcvipisalolbutzph.supabase.co",key:"sb_publishable_E_FWG55w_rWieyXnHhOOYg_ArYIdGzS"};
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const LS={get(k){try{return JSON.parse(localStorage.getItem("hb."+k))}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem("hb."+k):localStorage.setItem("hb."+k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- iconițe ---------- */
+const P={
+ menu:'<path d="M4 7h16"/><path d="M4 12h11"/><path d="M4 17h6"/>',
+ bell:'<path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 1.5h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>',
+ belloff:'<path d="M6 16.5V11a6 6 0 0 1 9.5-4.9M18 11v5.5l1.5 1.5h-15"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/><path d="M4 4l16 16"/>',
+ music:'<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
+ search:'<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/>',
+ feed:'<rect x="3.5" y="4" width="17" height="7" rx="2.5"/><rect x="3.5" y="13.5" width="17" height="6.5" rx="2.5"/>',
+ globe:'<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.9 5.2 3.9 8.5s-1.3 6.1-3.9 8.5c-2.6-2.4-3.9-5.2-3.9-8.5S9.4 5.9 12 3.5z"/>',
+ games:'<path d="M7 7.5h10a4 4 0 0 1 3.9 3.3l.7 4.2a2.6 2.6 0 0 1-4.5 2.1L15.5 15h-7l-2.1 2.1A2.6 2.6 0 0 1 1.9 15l.7-4.2A4 4 0 0 1 7 7.5z"/><path d="M8 10.5v3M6.5 12h3"/><circle cx="15.5" cy="11.2" r=".7" fill="currentColor"/><circle cx="17.6" cy="13" r=".7" fill="currentColor"/>',
+ chat:'<path d="M20.5 12a8 8 0 0 1-11.7 7.1L4 20.5l1.4-4.5A8 8 0 1 1 20.5 12z"/>',
+ comm:'<circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9.5" r="2.5"/><path d="M16.5 14.6c2.6-.2 4.4 1.3 4.9 4"/>',
+ user:'<circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20c.9-3.6 3.7-5.6 7.2-5.6s6.3 2 7.2 5.6"/>',
+ at:'<circle cx="12" cy="12" r="3.5"/><path d="M15.5 12v1.3a2.2 2.2 0 0 0 4.4 0V12a8 8 0 1 0-3.2 6.4"/>',
+ mail:'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7.5l8 6 8-6"/>',
+ lock:'<rect x="5" y="10.5" width="14" height="9.5" rx="3"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
+ eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
+ eyeoff:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/><path d="M4 4l16 16"/>',
+ back:'<path d="M15 5l-7 7 7 7"/>',
+ chev:'<path d="M9 5l7 7-7 7"/>',
+ shield:'<path d="M12 3l7.5 3v5.5c0 4.6-3.1 8-7.5 9.5-4.4-1.5-7.5-4.9-7.5-9.5V6z"/><path d="M9 12l2.2 2.2L15.5 10"/>',
+ wand:'<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+ tracker:'<path d="M4 4.5V19a1.5 1.5 0 0 0 1.5 1.5H20"/><path d="M8 15.5l3.4-4.2 3 2.4L19 7.5"/><circle cx="19" cy="7.5" r="1" fill="currentColor"/>',
+ film:'<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M8 4.5v15M16 4.5v15M3.5 9.5H8M3.5 14.5H8M16 9.5h4.5M16 14.5h4.5"/>',
+ book:'<path d="M5 4.5h10.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10.5"/>',
+ comics:'<rect x="3.5" y="4" width="7.5" height="9" rx="2"/><rect x="13" y="4" width="7.5" height="5" rx="2"/><rect x="13" y="11" width="7.5" height="9" rx="2"/><rect x="3.5" y="15" width="7.5" height="5" rx="2"/>',
+ sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/>',
+ trash:'<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.8 12a2 2 0 0 0 2 1.8h5.4a2 2 0 0 0 2-1.8L17.5 7"/>',
+ refresh:'<path d="M20 11a8 8 0 0 0-14-4.5L4 9M4 4v5h5M4 13a8 8 0 0 0 14 4.5L20 15M20 20v-5h-5"/>',
+ key:'<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/>',
+ vib:'<rect x="8" y="3.5" width="8" height="17" rx="2.2"/><path d="M4.5 8v8M19.5 8v8"/>',
+ bolt:'<path d="M13 3L5.5 13.5H12L11 21l7.5-10.5H12z"/>',
+ play:'<circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.8l5 3.2-5 3.2z"/>',
+ info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.2"/>',
+ db:'<ellipse cx="12" cy="6.5" rx="7" ry="3"/><path d="M5 6.5v11c0 1.7 3.1 3 7 3s7-1.3 7-3v-11M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>',
+ logout:'<path d="M9 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2H9M15 8l4 4-4 4M19 12H9.5"/>',
+ check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>'
+};
+const I=n=>`<svg viewBox="0 0 24 24">${P[n]}</svg>`;
+const MARK=c=>`<svg class="mk ${c||""}" viewBox="0 0 108 108"><circle class="mk-r" cx="54" cy="54" r="34" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="1.2"/><path class="mk-b" pathLength="1" d="M38 78V30H52a12 12 0 0 1 0 24H38H56a12 12 0 0 1 0 24H38" fill="none" stroke="url(#mkG)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><circle class="mk-d" cx="76" cy="28" r="3" fill="#22d3ee"/></svg>`;
+const WM=x=>`<span class="wm ${x||""}"><b>Hi</b><em>Blue</em></span>`;
+function paint(){
+ $$("[data-i]").forEach(e=>{if(!e.innerHTML)e.innerHTML=I(e.dataset.i)});
+ $$("[data-wm]").forEach(e=>{if(!e.innerHTML)e.innerHTML=WM(e.dataset.wm)});
+ $$("[data-mark]").forEach(e=>{if(!e.innerHTML)e.innerHTML=MARK(e.dataset.mark)})}
+let _tt;function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(_tt);_tt=setTimeout(()=>e.classList.remove("on"),2600)}
+
+/* ---------- setări (persistente) + haptics ---------- */
+const ST=Object.assign({haptics:true,anim:true,notif:true,lang:"ro"},LS.get("set")||{});
+const NAT=()=>window.HBNative||null;
+function hap(k){if(!ST.haptics)return;try{const n=NAT();if(n&&n.tap)n.tap(k||0);else if(navigator.vibrate)navigator.vibrate(k==2?28:k==1?18:10)}catch(e){}}
+function applySet(){document.documentElement.classList.toggle("noanim",!ST.anim);const b=$("#bellB");if(b)b.innerHTML=I(ST.notif?"bell":"belloff")+'<i class="dot" id="bdot" hidden></i>'}
+function toggleSet(k,el){ST[k]=!ST[k];el.classList.toggle("on",ST[k]);LS.set("set",ST);applySet();
+ if(k=="haptics"&&ST.haptics)hap(2);
+ if(k=="notif"&&ST.notif){const n=NAT();if(n&&n.notifPerm)n.notifPerm()}}
+
+/* =====================================================================
+   SUPABASE (REST direct)
+   ===================================================================== */
+const SB={ses:LS.get("ses"),profile:LS.get("profile")};
+async function http(path,o){o=o||{};const c=new AbortController(),t=setTimeout(()=>c.abort(),15000);
+ try{const h=Object.assign({apikey:CFG.key,"Content-Type":"application/json"},o.h||{});if(o.auth&&SB.ses)h.Authorization="Bearer "+SB.ses.access_token;
+  const r=await fetch(CFG.url+path,{method:o.m||"GET",headers:h,body:o.b?JSON.stringify(o.b):undefined,signal:c.signal});let j=null;try{j=await r.json()}catch(e){}return{ok:r.ok,s:r.status,j}}
+ catch(e){return{ok:false,s:0,net:true,j:null}}finally{clearTimeout(t)}}
+const msgOf=r=>(r&&r.j&&(r.j.msg||r.j.message||r.j.error_description||r.j.error))||("HTTP "+(r&&r.s));
+function setSes(j){const u=j.user||{};SB.ses={access_token:j.access_token,refresh_token:j.refresh_token,exp:j.expires_at?j.expires_at*1000:Date.now()+(j.expires_in||3600)*1000,uid:u.id||(SB.ses&&SB.ses.uid)||"",email:u.email||(SB.ses&&SB.ses.email)||""};LS.set("ses",SB.ses)}
+function clearSes(){SB.ses=null;SB.profile=null;LS.set("ses",null);LS.set("profile",null)}
+async function ensure(){if(!SB.ses)return"none";if(SB.ses.exp-60000>Date.now())return"ok";
+ const r=await http("/auth/v1/token?grant_type=refresh_token",{m:"POST",b:{refresh_token:SB.ses.refresh_token}});
+ if(r.ok&&r.j&&r.j.access_token){setSes(r.j);return"ok"}
+ if(r.net||r.s>=500||r.s==429)return"net";clearSes();return"none"}
+async function rest(path,o){let r=await http(path,Object.assign({auth:1},o||{}));if(r.s==401&&SB.ses){SB.ses.exp=0;if(await ensure()=="ok")r=await http(path,Object.assign({auth:1},o||{}))}return r}
+function am(r){const c=r&&r.j&&(r.j.error_code||r.j.code),m=String(msgOf(r)||"").toLowerCase();
+ if(r.net)return"Fără conexiune la internet";
+ if(c=="invalid_credentials"||m.includes("invalid login"))return"Email sau parolă greșită";
+ if(c=="email_not_confirmed"||m.includes("not confirmed"))return"Confirmă emailul înainte de autentificare";
+ if(c=="user_already_exists"||c=="email_exists"||m.includes("already"))return"Email deja folosit – autentifică-te";
+ if(c=="weak_password"||m.includes("password"))return"Parolă prea slabă (minim 6 caractere)";
+ if(c=="over_request_rate_limit"||c=="over_email_send_rate_limit"||r.s==429)return"Prea multe încercări – așteaptă puțin";
+ if(c=="email_address_invalid"||m.includes("email address"))return"Adresă de email invalidă";
+ if(m.includes("database error"))return"Numele de utilizator este ocupat sau invalid";
+ if(c=="signup_disabled")return"Înregistrările sunt oprite momentan";
+ return"Eroare: "+msgOf(r)}
+async function signIn(em,pw){const r=await http("/auth/v1/token?grant_type=password",{m:"POST",b:{email:em,password:pw}});
+ if(r.ok&&r.j&&r.j.access_token){setSes(r.j);return{ok:1}}return{err:am(r)}}
+async function signUp(em,pw,name,handle){const r=await http("/auth/v1/signup",{m:"POST",b:{email:em,password:pw,data:{username:name,handle:handle}}});
+ if(r.ok&&r.j&&r.j.access_token){setSes(r.j);return{ok:1}}
+ if(r.ok&&r.j&&Array.isArray(r.j.identities)&&!r.j.identities.length)return{err:"Email deja folosit – autentifică-te"};
+ if(r.ok)return{info:"Ți-am trimis un email de confirmare. Confirmă-l, apoi autentifică-te."};
+ return{err:am(r)}}
+async function signOut(){try{if(SB.ses)await http("/auth/v1/logout?scope=local",{m:"POST",auth:1})}catch(e){}clearSes()}
+async function handleFree(h){const r=await http("/rest/v1/rpc/handle_available",{m:"POST",b:{h:h}});return r.ok?r.j===true:null}
+async function loadProfile(){if(!SB.ses)return null;
+ const r=await rest("/rest/v1/profiles?id=eq."+SB.ses.uid+"&select=id,username,handle,bio,avatar");
+ if(r.ok&&Array.isArray(r.j)){let p=r.j[0];
+  if(!p){const c=await rest("/rest/v1/profiles?on_conflict=id",{m:"POST",h:{Prefer:"resolution=merge-duplicates,return=representation"},b:{id:SB.ses.uid}});p=c.ok&&Array.isArray(c.j)?c.j[0]:null}
+  if(p){SB.profile=p;LS.set("profile",p)}}
+ return SB.profile}
+const isAdminUI=()=>((SB.ses&&SB.ses.email)||"").toLowerCase()==ADMIN_EMAIL;
+/* =====================================================================
+   CAMERE (bara de jos) – le umplem pe rând
+   ===================================================================== */
+const ROOMS=[
+ {id:"feed",label:"Feed",ic:"feed",search:false},
+ {id:"world",label:"World",title:"HiBlue World",ic:"globe",search:false},
+ {id:"community",label:"Community",ic:"comm",search:false},
+ {id:"chat",label:"Chat",ic:"chat",search:false},
+ {id:"games",label:"Games",ic:"games",search:false}
+];
+const Rooms={};
+/* ===== ROOM: Feed ===== */       // Rooms.feed={mount(el){},show(){},hide(){}};
+/* ===== ROOM: World ===== */      // viitor: bump / snap like
+/* ===== ROOM: Games ===== (vezi games.js + game_flipnova.js) */
+/* ===== ROOM: Chat ===== */
+/* ===== ROOM: Community ===== */
+const emptyPg=(ic,t,s)=>`<div class="empty"><div class="ring">${I(ic)}</div><h2>${esc(t)}</h2><p>${esc(s||"În curând")}</p></div>`;
+let cur=null;
+function buildShell(){
+ $("#stage").innerHTML=ROOMS.map(r=>`<section class="room" id="r-${r.id}"></section>`).join("");
+ $("#nav").innerHTML=ROOMS.map(r=>`<button class="tb" data-id="${r.id}"><span class="ic"><svg viewBox="0 0 24 24">${P[r.ic]}</svg></span>${esc(r.label)}</button>`).join("")}
+function go(id){const R=ROOMS.find(x=>x.id==id);if(!R||id==cur)return;const prev=cur;cur=id;
+ $$(".tb").forEach(t=>t.classList.toggle("on",t.dataset.id==id));
+ $$(".room").forEach(s=>s.classList.toggle("on",s.id=="r-"+id));
+ const el=$("#r-"+id);
+ if(!el.dataset.m){el.dataset.m=1;const H=Rooms[id];if(H&&H.mount)H.mount(el);else el.innerHTML=emptyPg(R.ic,R.title||R.label)}
+ if(prev&&Rooms[prev]&&Rooms[prev].hide)Rooms[prev].hide();
+ if(Rooms[id]&&Rooms[id].show)Rooms[id].show();
+ $("#srch").hidden=!R.search}
+function resetShell(){cur=null;$$(".room").forEach(s=>{delete s.dataset.m;s.innerHTML="";s.classList.remove("on")});$$(".tb").forEach(t=>t.classList.remove("on"))}
+
+/* =====================================================================
+   DRAWER (hamburger)
+   ===================================================================== */
+const MEDIA=[
+ {id:"cinema",t:"Cinema",s:"Filme, seriale, anime",ic:"film"},
+ {id:"books",t:"Books",s:"Cărți",ic:"book"},
+ {id:"comics",t:"Comics",s:"Manga și benzi desenate",ic:"comics"}
+];
+const di=(pg,ic,t)=>`<button class="di" data-pg="${pg}"><span class="ri">${I(ic)}</span><span class="dt">${t}</span></button>`;
+function buildDrawer(){$("#dr").innerHTML=`<div class="dh">${WM()}</div>
+ ${di("profile","user","Profile")}
+ <div id="dAdm" hidden>${di("admin","shield","Admin Panel")}</div>
+ ${di("studio","wand","Pulse Studio")}
+ ${di("tracker","tracker","HiBlue Tracker")}
+ <button class="di" data-sub="media"><span class="ri">${I("film")}</span><span class="dt">Media</span><span class="ch">${I("chev")}</span></button>
+ <div class="sub" id="sub-media"><div>${MEDIA.map(m=>`<button class="di s" data-pg="${m.id}"><span class="ri">${I(m.ic)}</span><span class="dt">${esc(m.t)}<small>${esc(m.s)}</small></span></button>`).join("")}</div></div>
+ ${di("settings","sliders","Settings")}`}
+function drawer(o){$("#drawer").classList.toggle("open",!!o)}
+function fillAccount(){$("#dAdm").hidden=!isAdminUI()}
+
+/* =====================================================================
+   PAGINI (overlay cu săgeată înapoi)
+   ===================================================================== */
+const PG=[];
+function page(id,arg){const d=PAGES[id];if(!d)return;drawer(0);
+ const el=document.createElement("div");el.className="pg";
+ el.innerHTML=`<header class="ph"><button class="ib" data-act="pback" aria-label="Înapoi">${I("back")}</button><h1>${esc(d.t(arg))}</h1></header><div class="pb"></div>`;
+ document.body.appendChild(el);PG.push({el,id});d.render(el.querySelector(".pb"),arg);
+ requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add("in")))}
+function pageBack(){const p=PG.pop();if(!p)return false;p.el.classList.remove("in");setTimeout(()=>p.el.remove(),320);return true}
+function closePages(){while(PG.length)PG.pop().el.remove()}
+const row=o=>`<button class="row ${o.c||""}" ${o.pg?`data-pg="${o.pg}"`:""} ${o.act?`data-act="${o.act}"`:""}><span class="ri">${I(o.ic)}</span><span class="rt"><b>${esc(o.t)}</b>${o.s?`<small>${esc(o.s)}</small>`:""}</span>${o.v?`<span class="rv">${esc(o.v)}</span>`:""}<span class="ch">${I("chev")}</span></button>`;
+const trow=(k,ic,t,s)=>`<div class="row tg ${ST[k]?"on":""}" data-tg="${k}" role="switch"><span class="ri">${I(ic)}</span><span class="rt"><b>${t}</b><small>${s}</small></span><span class="sw"></span></div>`;
+const LANGS=[{c:"ro",n:"Română"}];
+const langName=()=>(LANGS.find(l=>l.c==ST.lang)||LANGS[0]).n;
+
+const PAGES={
+ profile:{t:()=>"Profile",render:el=>el.innerHTML=emptyPg("user","Profile")},
+ studio:{t:()=>"Pulse Studio",render:el=>el.innerHTML=emptyPg("wand","Pulse Studio")},
+ tracker:{t:()=>"HiBlue Tracker",render:el=>el.innerHTML=emptyPg("tracker","HiBlue Tracker")},
+ playback:{t:()=>"Playback & Reader",render:el=>el.innerHTML=emptyPg("play","Playback & Reader")},
+ storage:{t:()=>"Storage",render:el=>el.innerHTML=emptyPg("db","Storage")},
+ privacy:{t:()=>"Privacy",render:el=>el.innerHTML=emptyPg("lock","Privacy")},
+ lang:{t:()=>"Limba",render(el){el.innerHTML=`<div class="rows">${LANGS.map(l=>`<div class="row"><span class="ri">${I("globe")}</span><span class="rt"><b>${esc(l.n)}</b></span>${l.c==ST.lang?`<span class="ch">${I("check")}</span>`:""}</div>`).join("")}</div><p class="note">Alte limbi vor fi adăugate în update-urile viitoare.</p>`}},
+ about:{t:()=>"Despre HiBlue",render(el){el.innerHTML=`<div class="about"><div class="logo" data-mark></div>${WM("xl")}<p>Versiunea ${APP_VERSION}</p></div>`;paint()}},
+ settings:{t:()=>"Settings",render(el){const em=(SB.ses&&SB.ses.email)||"";
+  el.innerHTML=`<div class="grp"><div class="gt">Surse</div><div class="rows">${row({pg:"sources",ic:"key",t:"Sources",s:"API Keys"})}</div></div>
+  <div class="grp"><div class="gt">Aplicație</div><div class="rows">
+   ${row({pg:"lang",ic:"globe",t:"Limba",v:langName()})}
+   ${trow("haptics","vib","Haptics","Vibrații la atingere")}
+   ${trow("anim","bolt","Animations","Animații și tranziții")}
+   ${trow("notif","bell","Notifications","Notificări")}
+  </div></div>
+  <div class="grp"><div class="rows">${row({pg:"playback",ic:"play",t:"Playback & Reader"})}${row({pg:"storage",ic:"db",t:"Storage"})}${row({pg:"privacy",ic:"lock",t:"Privacy"})}</div></div>
+  <div class="grp"><div class="rows">${row({pg:"about",ic:"info",t:"Despre HiBlue"})}</div></div>
+  <div class="grp"><div class="gt">Cont</div><div class="rows"><div class="row"><span class="ri">${I("mail")}</span><span class="rt"><b>${esc(em)}</b><small>Autentificat</small></span></div>${row({act:"out",ic:"logout",t:"Deconectare",c:"danger"})}</div></div>`}}
+};
+MEDIA.forEach(m=>PAGES[m.id]={t:()=>m.t,render:el=>el.innerHTML=emptyPg(m.ic,m.t)});
+
+/* ---------- Sources (API Keys) – extensibil ----------
+   Adaugi o sursă într-o linie, ex.:
+   SOURCES.push({id:"tmdb",name:"TMDB",desc:"Filme și seriale",ph:"API key (v3)",scan:async key=>({ok:true,msg:"Scanat"})});  */
+const SOURCES=[];
+const srcKey=id=>LS.get("src."+id)||"";
+PAGES.sources={t:()=>"Sources",render(el){
+ if(!SOURCES.length){el.innerHTML=`<p class="note">Aici apar sursele (TMDB și altele), una sub alta: nume, câmp pentru cheie API și Rescanare.</p>`+emptyPg("key","Nicio sursă încă","API Keys");return}
+ el.innerHTML=SOURCES.map(s=>`<div class="src" data-s="${esc(s.id)}"><div class="sh"><b>${esc(s.name)}</b><span class="chip ${srcKey(s.id)?"ok":""}">${srcKey(s.id)?"Configurat":"Neconfigurat"}</span></div>${s.desc?`<p>${esc(s.desc)}</p>`:""}
+  <label class="fld"><span style="display:contents">${I("key")}</span><input type="password" value="${esc(srcKey(s.id))}" placeholder="${esc(s.ph||"API key")}" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+  <div class="sb"><button class="btn sm" data-sv="${esc(s.id)}">Salvează</button><button class="btn sm ghost" data-sc="${esc(s.id)}">${I("refresh")}<span>Rescanare</span></button></div><p class="ss"></p></div>`).join("")}};
+function srcSave(id){const c=document.querySelector(`.src[data-s="${id}"]`);if(!c)return;const v=c.querySelector("input").value.trim();LS.set("src."+id,v||null);
+ const ch=c.querySelector(".chip");ch.textContent=v?"Configurat":"Neconfigurat";ch.classList.toggle("ok",!!v);toast(v?"Cheie salvată":"Cheie ștearsă")}
+async function srcScan(id,btn){const s=SOURCES.find(x=>x.id==id),c=document.querySelector(`.src[data-s="${id}"]`);if(!s||!c)return;const ss=c.querySelector(".ss");
+ if(!s.scan){ss.textContent="Rescanarea nu e disponibilă încă pentru această sursă.";return}
+ srcSave(id);btn.classList.add("busy");ss.textContent="";
+ try{const r=await s.scan(srcKey(id));ss.textContent=(r&&r.msg)||"Gata"}catch(e){ss.textContent="Eroare: "+(e&&e.message||e)}
+ btn.classList.remove("busy")}
+
+/* ---------- Admin Panel (verificat și pe server: is_admin()) ---------- */
+const fmt=d=>d?new Date(d).toLocaleDateString("ro-RO"):"—";
+const usrHTML=u=>{const me=SB.ses&&u.id==SB.ses.uid,n=u.username||u.email||"?";
+ return `<div class="usr" data-id="${esc(u.id)}"><div class="av">${esc((n[0]||"?").toUpperCase())}</div><div class="ui"><b>${esc(u.username||"—")}${u.handle?` <i>@${esc(u.handle)}</i>`:""}</b><small>${esc(u.email||"")}</small><small>Creat ${fmt(u.created_at)} · ultima autentificare ${fmt(u.last_sign_in_at)}</small></div>${me?'<span class="chip ok">Tu</span>':`<button class="ib del" data-del="${esc(u.id)}" aria-label="Șterge">${I("trash")}</button>`}</div>`};
+function ask(t,s,ok){return new Promise(res=>{const m=document.createElement("div");m.className="mdl";
+ m.innerHTML=`<div class="mc"><h3>${esc(t)}</h3><p>${esc(s)}</p><div class="mb"><button class="btn sm ghost" data-r="0">Anulează</button><button class="btn sm dng" data-r="1">${esc(ok||"OK")}</button></div></div>`;
+ m.addEventListener("click",e=>{const b=e.target.closest("[data-r]");if(b||e.target==m){m.remove();res(!!b&&b.dataset.r=="1")}});document.body.appendChild(m)})}
+PAGES.admin={t:()=>"Admin Panel",render(el){
+ el.innerHTML=`<div class="stats">${[["Utilizatori","total"],["Noi 24h","new_24h"],["Noi 7 zile","new_7d"],["Activi 7 zile","active_7d"]].map(x=>`<div class="stat"><b data-k="${x[1]}">–</b><small>${x[0]}</small></div>`).join("")}</div>
+ <div class="gt" style="margin:20px 6px 8px">Utilizatori</div>
+ <label class="fld"><span style="display:contents">${I("search")}</span><input id="aQ" placeholder="Caută: nume, @utilizator, email" autocomplete="off"></label>
+ <p class="msg" id="aMsg"></p><div id="aList"></div><button class="btn sm ghost" id="aMore" style="width:100%;margin-top:6px" hidden>Mai mulți</button>`;
+ adminInit(el)}};
+async function adminInit(el){let off=0,q="",tm;const L=20,msg=el.querySelector("#aMsg"),list=el.querySelector("#aList"),more=el.querySelector("#aMore");
+ const err=r=>{const m=String(msgOf(r)).toLowerCase();msg.textContent=r.net?"Fără conexiune la internet":m.includes("forbidden")?"Acces interzis":(r.s==404||m.includes("could not find")||m.includes("schema cache"))?"Lipsește update0.0.1.sql în Supabase – rulează-l în SQL Editor.":"Eroare: "+msgOf(r)};
+ const stats=async()=>{const r=await rest("/rest/v1/rpc/admin_stats",{m:"POST",b:{}});if(!r.ok)return err(r);msg.textContent="";for(const k in r.j){const e=el.querySelector(`[data-k="${k}"]`);if(e)e.textContent=r.j[k]}};
+ const load=async reset=>{if(reset){off=0;list.innerHTML=""}const r=await rest("/rest/v1/rpc/admin_list_users",{m:"POST",b:{q:q,lim:L,skip:off}});if(!r.ok)return err(r);
+  const a=r.j||[];list.insertAdjacentHTML("beforeend",a.map(usrHTML).join(""));off+=a.length;more.hidden=a.length<L;if(reset&&!a.length)list.innerHTML='<p class="note">Niciun utilizator găsit.</p>'};
+ el.querySelector("#aQ").addEventListener("input",e=>{clearTimeout(tm);tm=setTimeout(()=>{q=e.target.value.trim();load(true)},350)});
+ more.addEventListener("click",()=>load(false));
+ el.addEventListener("click",async e=>{const b=e.target.closest("[data-del]");if(!b)return;
+  if(!await ask("Ștergi utilizatorul?","Contul și profilul vor fi șterse definitiv.","Șterge"))return;
+  const r=await rest("/rest/v1/rpc/admin_delete_user",{m:"POST",b:{target:b.dataset.del}});
+  if(!r.ok)return toast("Nu s-a putut șterge");const row=b.closest(".usr");if(row)row.remove();toast("Utilizator șters");stats()});
+ stats();load(true)}
+
+/* =====================================================================
+   NAVIGARE + API PUBLIC
+   ===================================================================== */
+function showApp(){$("#auth").classList.remove("on");$("#app").classList.add("on");resetShell();go("feed");fillAccount();loadProfile().then(fillAccount)}
+function showAuth(){closePages();if(window.GM)GM.reset();$("#app").classList.remove("on");drawer(0);setMode("in");$("#pw").value="";note("");$("#auth").classList.add("on")}
+async function doOut(){if(!await ask("Te deconectezi?","Va trebui să te autentifici din nou.","Deconectare"))return;await signOut();showAuth();toast("Deconectat")}
+window.HB={go,page,rest,toast,esc,icon:I,haptic:hap,sources:SOURCES,settings:ST,user:()=>SB.profile,session:()=>SB.ses,rooms:Rooms,
+ notifResult(g){if(!g){ST.notif=false;LS.set("set",ST);applySet();$$('[data-tg="notif"]').forEach(e=>e.classList.remove("on"));toast("Notificările sunt blocate din setările telefonului")}},
+ back(){const m=$(".mdl");if(m){m.click();return true}
+  if(window.GM&&GM.back())return true;
+  if($("#drawer").classList.contains("open")){drawer(0);return true}
+  if(PG.length){pageBack();return true}
+  if($("#app").classList.contains("on")&&cur&&cur!="feed"){go("feed");return true}return false}};
+
+/* =====================================================================
+   AUTENTIFICARE
+   ===================================================================== */
+const HRE=/^[a-z0-9_.]{3,20}$/;let mode="in",busy=0,hSt="",hTm=0,hSeq=0;
+function note(t,info){const m=$("#msg");m.textContent=t||"";m.className="msg"+(info?" info":"")}
+function fail(t){const m=$("#msg");m.textContent=t;m.className="msg";void m.offsetWidth;m.classList.add("shake")}
+function setMode(m){mode=m;const up=m=="up";$("#authBox").classList.toggle("up",up);$$(".seg button").forEach(b=>b.classList.toggle("on",b.dataset.m==m));
+ $(".fup>div").toggleAttribute("inert",!up);$("#go").textContent=up?"Creează cont":"Intră";$("#pw").autocomplete=up?"new-password":"current-password";note("")}
+function setBusy(b){busy=b;$("#go").classList.toggle("busy",!!b)}
+function eyeSet(show){$("#pw").type=show?"text":"password";$("#eye").innerHTML=I(show?"eyeoff":"eye")}
+function hCheck(){const v=$("#hd").value,s=$("#hst");clearTimeout(hTm);hSt="";s.textContent="";s.className="st";
+ if(!v)return;if(!HRE.test(v)){s.textContent="3–20";s.className="st no";return}
+ const q=++hSeq;s.textContent="…";hTm=setTimeout(async()=>{const f=await handleFree(v);if(q!=hSeq)return;
+  if(f===null){hSt="";s.textContent="";return}hSt=f?"free":"taken";s.textContent=f?"✓ liber":"ocupat";s.className="st "+(f?"ok":"no")},450)}
+async function submit(){if(busy)return;const up=mode=="up",em=$("#em").value.trim(),pw=$("#pw").value,nm=$("#nm").value.trim(),hd=$("#hd").value.trim();let e="";
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em))e="Adresă de email invalidă";
+ else if(pw.length<6)e="Parola trebuie să aibă minim 6 caractere";
+ else if(up){if(nm.length<2)e="Numele trebuie să aibă minim 2 caractere";else if(!HRE.test(hd))e="Utilizator: 3–20 caractere (litere mici, cifre, _ sau .)";else if(hSt=="taken")e="Numele de utilizator este ocupat"}
+ if(e)return fail(e);
+ note("");setBusy(1);const r=up?await signUp(em,pw,nm,hd):await signIn(em,pw);setBusy(0);
+ if(r.err)return fail(r.err);
+ if(r.info){setMode("in");note(r.info,1);return}
+ showApp()}
+
+/* =====================================================================
+   EVENIMENTE + PORNIRE
+   ===================================================================== */
+document.addEventListener("click",e=>{const T=e.target;
+ if(T.closest(".tb,.ib,.btn,.seg button,.row,.di,.acc"))hap(0);
+ const m=T.closest(".seg button");if(m){setMode(m.dataset.m);return}
+ const t=T.closest(".tb");if(t){go(t.dataset.id);return}
+ const tg=T.closest("[data-tg]");if(tg){toggleSet(tg.dataset.tg,tg);return}
+ const sb=T.closest("[data-sub]");if(sb){$("#sub-"+sb.dataset.sub).classList.toggle("open");sb.classList.toggle("open");return}
+ const g=T.closest("[data-pg]");if(g){page(g.dataset.pg);return}
+ const sv=T.closest("[data-sv]");if(sv){srcSave(sv.dataset.sv);return}
+ const sc=T.closest("[data-sc]");if(sc){srcScan(sc.dataset.sc,sc);return}
+ const a=T.closest("[data-act]");if(!a)return;
+ switch(a.dataset.act){
+  case"menu":drawer(1);break;
+  case"close":drawer(0);break;
+  case"pback":pageBack();break;
+  case"bell":case"music":break;       // goale deocamdată
+  case"out":doOut();break}});
+$("#go").addEventListener("click",submit);
+$("#eye").addEventListener("click",()=>eyeSet($("#pw").type=="password"));
+$("#hd").addEventListener("input",e=>{e.target.value=e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g,"").slice(0,20);hCheck()});
+["em","pw","nm","hd"].forEach(id=>$("#"+id).addEventListener("keydown",e=>{if(e.key=="Enter"){e.preventDefault();submit()}}));
+document.addEventListener("focusin",e=>{if(e.target.matches&&e.target.matches("input"))setTimeout(()=>{try{e.target.scrollIntoView({block:"center",behavior:"smooth"})}catch(x){}},320)});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&SB.ses)ensure().then(s=>{if(s=="none"&&$("#app").classList.contains("on")){showAuth();toast("Sesiunea a expirat")}})});
+
+(async function start(){
+ applySet();paint();buildShell();buildDrawer();applySet();eyeSet(false);setMode("in");
+ const boot=(async()=>{if(!SB.ses)return"auth";const s=await ensure();return s=="none"?"auth":"app"})();
+ const [,dest]=await Promise.all([sleep(ST.anim?2900:600),boot]);
+ if(dest=="app")showApp();else showAuth();
+ $("#splash").classList.add("out");setTimeout(()=>$("#splash").remove(),800)})();
+</script>
+<script src="games.js"></script>
+<script src="game_flipnova.js"></script><script src="game_myblue.js"></script></body></html>
+=== FILE: app/build.gradle.kts ===
+plugins{id("com.android.application");id("org.jetbrains.kotlin.android")}
+android{
+ namespace="ro.lingurar.hiblue"
+ compileSdk=34
+ defaultConfig{applicationId="ro.lingurar.hiblue";minSdk=24;targetSdk=34;versionCode=5;versionName="0.0.4"}
+ buildTypes{
+  release{
+   isMinifyEnabled=true
+   isShrinkResources=true
+   proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"),"proguard-rules.pro")
+   signingConfig=signingConfigs.getByName("debug")
+  }
+ }
+ compileOptions{sourceCompatibility=JavaVersion.VERSION_17;targetCompatibility=JavaVersion.VERSION_17}
+ kotlinOptions{jvmTarget="17"}
+}
+dependencies{
+ implementation("androidx.core:core-ktx:1.13.1")
+}
+=== FILE: supabase/update0.0.4.sql ===
+-- =====================================================================
+-- HiBlue · update0.0.4 — My Blue: scoruri de quest pentru clasamentul Games
+-- Rulează O SINGURĂ DATĂ în Supabase → SQL Editor, după update0.0.3.sql.
+-- Salvarea animalului, monedele, hainele și decorul rămân pe dispozitiv.
+-- =====================================================================
+
+insert into public.games (id, name, max_score, pace)
+values ('myblue', 'My Blue', 9999, 0.5)
+on conflict (id) do update
+set name = excluded.name, max_score = excluded.max_score, pace = excluded.pace;
+=== FILE: README.md ===
+# HiBlue – update0.0.4
+
+Adaugă **My Blue**, un joc de tip animal de companie virtual: hrănire, baie, joacă, somn,
+cinci camere, haine de cumpărat și echipat, decoruri și șapte questuri cu vedere de sus.
+Progresul, monedele, ținutele și casa se salvează pe dispozitiv. Questurile încheiate trimit
+scorul către clasamentul Games când există conexiune și schema Supabase este actualizată.
+
+## Aplicare
+
+Pune `update0.0.4.txt` în rădăcina repo-ului alături de `hiblue.txt` și update-urile anterioare,
+apoi construiește APK-ul cu workflow-ul `Build APK`.
+
+## Supabase
+
+În SQL Editor, rulează `supabase/update0.0.4.sql` după `update0.0.3.sql` pentru rating și Top 10.
+Jocul și salvarea locală funcționează și fără acest pas, însă scorurile și rating-ul nu se sincronizează.
+
+## Controale în questuri
+
+Folosește joystickul de pe ecran, săgețile sau tastele WASD. Pe calculator, poți și să atingi
+locul în care vrei să ajungă Blue. Questul cu magazinul cere să conduci până la magazin,
+să iei cele trei alimente și te întorci acasă.
