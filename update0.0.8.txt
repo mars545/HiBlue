@@ -1,0 +1,1435 @@
+=== FILE: docs/THE_JUDGMENT.md ===
+# THE JUDGMENT — Fezabilitate tehnică și arhitectură (update0.0.8)
+
+**Primul joc nativ Kotlin în HiBlue.** Engine: LibGDX 1.12.1.
+Acest document răspunde la prima misiune: analiză, selecție engine, limitări Android,
+asset pipeline, testare, și prototipul minimal funcțional.
+
+---
+
+## 1. Analiza proiectului
+
+THE JUDGMENT este un joc de horror psihologic first-person pentru Android, integrat
+în aplicația existentă HiBlue ca joc nativ. Inspirații declarate: SAW (tensiune
+psihologică, dileme morale, puzzle-uri) și Outlast (explorare first-person,
+vulnerabilitate, prezentare cinematică). Identitatea trebuie să fie originală.
+
+Cerinte tehnice prioritare (din brief):
+1. Visual 3D de calitate
+2. Performanță Android fiabilă
+3. Controale first-person
+4. Fizică și coliziuni 3D
+5. Animații
+6. Lumini, umbre, atmosferă
+7. Mediu interactiv
+8. Audio pozițional și voce
+9. Dialog, narativă branching, save
+10. Mentenabilitate pe termen lung + dezvoltare asistată de AI
+
+## 2. Selecția engine-ului: LibGDX 1.12.1
+
+### Variante evaluate
+
+| Engine | Calitate 3D | Code-first | Integrare Android | Complexitate CI | Verdict |
+|--------|------------|------------|-------------------|-----------------|---------|
+| Unity | Excelentă | Necesită editor | Export ca bibliotecă (complex) | Necesită Unity CLI | Respins: violare code-first |
+| Godot 4 | Excelentă | Editor opțional | Export bibliotecă (experimental) | Necesită binar Godot | Respins: complexitate integrare |
+| jMonkeyEngine | Bună | Da | Fork Android | Medie | Respins: comunitate mică, focus mobil redus |
+| **LibGDX** | **Bună** | **Da (fără editor)** | **Activity nativ Android** | **Gradle standard** | **Selectat** |
+| WebView + Three.js | Limitată | Da | Deja integrat | Niciuna | Respins: performanță 3D insuficientă |
+| Engine custom | Variabilă | Da | Control total | Ridată | Respins: regulă „fără engine custom" |
+
+### De ce LibGDX
+
+1. **Java/Kotlin pur** — compilează în același bytecode ca host-ul HiBlue.
+   Nicio complexitate JNI dincolo de bibliotecile native gdx (rezolvate automat).
+
+2. **Fără editor** — toate scenele, modelele, materialele și luminile se construiesc
+   în cod. Potrivit perfect pentru mandatarea „code-first" și fluxul exclusiv Git.
+
+3. **Activity Android nativ** — `AndroidApplication` extinde `Activity`. Se integrează
+   exact cu contractul HiBlue: lansat prin Intent, întoarce scor prin Intent
+   (`setResult(RESULT_OK, intent cu EXTRA_SCORE, EXTRA_SECONDS)`).
+
+4. **Suport 3D** — `PerspectiveCamera`, `ModelBatch`, `Environment`, `DirectionalLight`,
+   `PointLight`, `SpotLight`, `ModelInstance`, shadere GLSL custom. Suficient pentru
+   atmosferă horror.
+
+5. **CI-friendly** — build Gradle pur, fără toolchain extern (fără editor Unity, fără
+   binar Godot). `gradle assembleDebug` în GitHub Actions produce APK-ul.
+
+6. **Matur** — întreținut activ din 2010, documentație extinsă, comunitate mare.
+
+7. **Asset-uri versionabile** — modele GLTF/GLB, texturi PNG/ETC2, audio OGG.
+   Toate fișiere binare track-uite în Git, fără formate scene specifice editorului.
+
+### Compromisuri recunoscute
+
+- **Calitatea 3D** este sub Unity și Godot 4. LibGDX nu are PBR, SSAO, volumetric fog
+  built-in. Mitigare: shadere GLSL custom pentru atmosferă horror (fog, vignette,
+  film grain, bloom) într-un pipeline de post-procesare. Reconsiderăm DOAR dacă
+  dovezi tehnice măsurabile arată o limitare gravă după ce prototipul este testat.
+
+- **Fizică Bullet** (native) adaugă complexitate. Pentru prototip folosim coliziune
+  custom sferă-vs-AABB (fără native deps). Bullet se poate adăuga când jocul
+  necesită dinamici rigid body.
+
+## 3. Limitări specifice Android
+
+| Limitare | Impact | Mitigare |
+|----------|--------|----------|
+| Diversitate GPU (Mali, Adreno, PowerVR) | Compatibilitate shadere | Folosim GL ES 2.0; GL3 opt-in |
+| Throttling termic | Framerate scade după 10-15 min | Cap 30 FPS; simplificăm shadere |
+| Memorie (128-512 MB heap per-app) | Limite asset loading | Stream asset-uri; dispose agresiv |
+| Latență touch (50-100 ms) | Controale lente | Deadzone; cameră predictivă |
+| Latență audio (OpenSL ~80 ms) | Desincronizare pași | Compensăm cu feedback vizual |
+| Descărcare baterie | Utilizatorii renunță | Pauză în background; FPS redus idle |
+
+Toate sunt adresabile cu tehnici standard de mobile game development. Niciuna nu
+blochează prototipul.
+
+## 4. Asset pipeline
+
+### Prototip (acest update)
+Toate asset-urile sunt generate procedural în cod Kotlin:
+- Geometrie cameră: `ModelBuilder.box()` pentru podea, pereți, tavan
+- Materiale: `ColorAttribute.createDiffuse()` cu culori întunecate
+- Lumini: `Environment` cu ambient + direcțional + spotlight
+- Audio: `AudioDevice` generând un drone jos procedural
+
+Niciun fișier asset extern. Niciun placeholder. Totul e cod.
+
+### Faze viitoare
+| Tip asset | Format | Import | Compresie |
+|-----------|--------|--------|-----------|
+| Modele | GLTF 2.0 / GLB | `AssetManager.load()` | Draco mesh compression |
+| Texturi | PNG → ETC2 | `TextureLoader` | ETC2 (alpha: ETC2 + RGBA) |
+| Audio | OGG Vorbis | `SoundLoader` / `MusicLoader` | Q=0.4 voce, Q=0.3 ambient |
+| Animații | GLTF embedded | `AnimationController` | — |
+
+Toate asset-urile în `app/src/main/assets/judgment/`. Versionate în Git.
+
+## 5. Workflow de testare
+
+### Automat (în CI)
+- **Compilare**: `gradle assembleDebug` verifică că tot Kotlin-ul compilează și
+  dependențele rezolvă.
+- **Teste unitare**: teste JVM pentru logică pură (matematică coliziune) via
+  `testImplementation("junit:junit:4.13.2")`.
+- **Lint**: Android lint verifică probleme de nivel API.
+
+### Manual (necesită dispozitiv fizic)
+- **Randare**: verificare vizuală a scenei, luminilor, atmosferei.
+- **Performanță**: măsurători FPS via `Gdx.graphics.framesPerSecond`.
+- **Controale**: responsivitate touch, multitouch.
+- **Audio**: redarea drone-ului ambient.
+
+### Starea onestă a acestui update
+- ✅ Compilare verificată în GitHub Actions (`gradle assembleDebug`).
+- ✅ Teste unitare pentru matematică coliziune trec în JVM.
+- ❌ Comportament runtime pe dispozitiv NEVERIFICAT (CI nu are dispozitiv).
+- ❌ Performanță NEMĂSURATĂ (necesită dispozitiv fizic).
+- ❌ Calitate vizuală NEEVALUATĂ (necesită dispozitiv fizic).
+
+## 6. Workflow build
+
+`.github/workflows/build.yml` existent rulează `gradle assembleDebug` și încarcă APK-ul.
+Nicio modificare necesară.
+
+LibGDX native libraries (`libgdx.so`) sunt extrase automat în build:
+1. Configurația Gradle `natives` rezolvă JAR-urile per-ABI din Maven Central.
+2. Task-ul `extractNatives` dezarhivează `.so` în `app/src/main/jniLibs/<abi>/`.
+3. Android Gradle Plugin le împachetează în APK.
+
+Reproductibil: toate dependențele versionate în `build.gradle.kts`. Niciun toolchain local.
+
+## 7. Integrare cu HiBlue
+
+### Flux de lansare
+1. Utilizatorul apasă „Play" pe cardul The Judgment în camera Games.
+2. Launcher din Game Platform apelează `game.native.launch` prin NativeBridge.
+3. Host (Kotlin) apelează `startActivityForResult(JudgmentActivity, ...)`.
+4. `JudgmentActivity` inițializează LibGDX și rulează jocul.
+5. La completare/ieșire, `JudgmentActivity` face `setResult(RESULT_OK, intent)`
+   cu scor și secunde.
+6. Host emite evenimentul `nativeGame` către NativeBridge.
+7. Native Game Adapter apelează `ctx.over(score, secs)`.
+8. Scorul trimis prin SDK → Supabase `submit_score()` → Top 10.
+
+### Lifecycle
+- `JudgmentActivity.onCreate()` → LibGDX `create()`
+- `onPause()` → LibGDX `pause()` (audio se oprește, randarea se oprește)
+- `onResume()` → LibGDX `resume()` (audio repornește)
+- `onDestroy()` → LibGDX `dispose()` (toate resursele eliberate)
+- Back button → `setResult(RESULT_CANCELED)` → `finish()`
+
+### Permisiuni
+Nicio permisiune nouă. Jocul folosește:
+- INTERNET existent (pentru trimitere scor prin host)
+- VIBRATE existent (pentru haptics prin host)
+- Audio output (nu necesită permisiune pe Android)
+
+### Orientare
+Jocul rulează în landscape. Launcher-ul host-ului setează orientarea landscape
+înainte de lansare și restaurează portrait la ieșire. `JudgmentActivity` declară
+`android:screenOrientation="landscape"` în manifest ca fallback.
+
+## 8. Scope prototip
+
+### Inclus
+- ✅ O cameră închisă (12×12×4 unități, procedurală)
+- ✅ Cameră first-person cu proiecție perspectivă
+- ✅ Controale touch mobile (multitouch: joystick + look)
+- ✅ Coliziune sferă-vs-AABB și gravitație
+- ✅ O ușă interactivă (se deschide când jucătorul e aproape și apasă interact)
+- ✅ Lanternă (SpotLight atașat de cameră)
+- ✅ Iluminare atmosferică (ambient foarte jos + direcțional slab + spotlight)
+- ✅ Audio ambient (drone jos procedural via AudioDevice)
+- ✅ Buton de ieșire (întoarce în HiBlue cu scor)
+
+### NEincluse (faze viitoare)
+- Poveste și narativă
+- Camere multiple / level streaming
+- Modele de personaje și animații
+- Obiecte cu fizică (rigid body dynamics)
+- Sistem de save (via SDK)
+- Audio complet (pași, voce, muzică)
+- Post-procesare (fog, vignette, grain)
+- Mecanici de puzzle
+- Sistem de alegeri morale
+- Inventar
+
+### Scor
+- Ușă deschisă: scor = 10
+- Anulat (back/exit înainte de ușă): scor = 0
+- Trece mereu anti-cheat-ul server-ului (10 < max_score=100, în limitele pace=0.5
+  pentru orice completare >4 secunde — fizic imposibil să termini mai repede).
+
+## 9. Limitări cunoscute
+
+1. **Runtime neverificat** — compilare trece în CI; testare pe dispozitiv necesară
+   pentru verificare vizuală/performanță.
+2. **Calitate vizuală basică** — shader default LibGDX, fără post-procesare.
+   Shadere custom planificate pentru faza următoare.
+3. **Audio minimal** — un singur drone procedural. Pipeline audio complet în faza următoare.
+4. **Controale pot avea nevoie de tuning** — sensibilitate, deadzone, dimensiune
+   joystick necesită testare pe dispozitiv.
+5. **Fără sistem de save** — prototipul nu persistă progresul. Integrare SDK în
+   faza următoare.
+
+## 10. Pași următori (după aprobarea prototipului)
+
+1. **Testare pe dispozitiv** — verificăm rezultatul compilării pe telefon fizic.
+   Măsurăm FPS. Tunăm controale.
+2. **Shadere custom** — implementăm post-procesare horror (fog, vignette, grain, bloom).
+3. **Pipeline asset-uri** — adăugăm încărcare modele GLTF, texturi ETC2.
+4. **Sistem narativ** — dialog branching, alegeri morale, save points.
+5. **Motor audio** — audio pozițional 3D, pași, voce.
+6. **Sistem de niveluri** — multi-room streaming, mecanici puzzle, trigger-e.
+7. **Optimizare performanță** — frustum culling, instanced rendering, LOD.
+
+=== FILE: app/build.gradle.kts ===
+import java.io.File
+import java.util.zip.ZipFile
+
+plugins{id("com.android.application");id("org.jetbrains.kotlin.android")}
+android{
+ namespace="ro.lingurar.hiblue"
+ compileSdk=34
+ defaultConfig{applicationId="ro.lingurar.hiblue";minSdk=24;targetSdk=34;versionCode=9;versionName="0.0.8";ndk{abiFilters+=listOf("armeabi-v7a","arm64-v8a","x86","x86_64")}}
+ buildTypes{
+  release{
+   isMinifyEnabled=true
+   isShrinkResources=true
+   proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"),"proguard-rules.pro")
+   signingConfig=signingConfigs.getByName("debug")
+  }
+ }
+ compileOptions{sourceCompatibility=JavaVersion.VERSION_17;targetCompatibility=JavaVersion.VERSION_17}
+ kotlinOptions{jvmTarget="17"}
+ testOptions{unitTests{isIncludeAndroidResources=true}}
+}
+configurations{register("natives")}
+dependencies{
+ implementation("androidx.core:core-ktx:1.13.1")
+
+ // LibGDX pentru THE JUDGMENT (joc nativ 3D first-person horror)
+ implementation("com.badlogicgames.gdx:gdx:1.12.1")
+ implementation("com.badlogicgames.gdx:gdx-backend-android:1.12.1")
+ "natives"("com.badlogicgames.gdx:gdx-platform:1.12.1:natives-armeabi-v7a")
+ "natives"("com.badlogicgames.gdx:gdx-platform:1.12.1:natives-arm64-v8a")
+ "natives"("com.badlogicgames.gdx:gdx-platform:1.12.1:natives-x86")
+ "natives"("com.badlogicgames.gdx:gdx-platform:1.12.1:natives-x86_64")
+
+ // Teste unitare JVM
+ testImplementation("junit:junit:4.13.2")
+}
+
+// Extrage .so din JAR-urile natives în jniLibs/<abi>/ — rulat înainte de mergeJniLibFolders
+tasks.register("extractNatives"){
+ doLast{
+  val nativesDir=file("src/main/jniLibs")
+  configurations["natives"].resolve().forEach{jar->
+   val n=jar.nameWithoutExtension
+   val abi=when{
+    n.contains("natives-armeabi-v7a")->"armeabi-v7a"
+    n.contains("natives-arm64-v8a")->"arm64-v8a"
+    n.contains("natives-x86_64")->"x86_64"
+    n.contains("natives-x86")->"x86"
+    else->return@forEach
+   }
+   val target=File(nativesDir,abi)
+   target.mkdirs()
+   ZipFile(jar).use{zip->
+    zip.entries().asSequence().filter{it.name.endsWith(".so")&&!it.isDirectory}.forEach{entry->
+     zip.getInputStream(entry).use{input->
+      File(target,File(entry.name).name).outputStream().use{output->
+       input.copyTo(output)
+      }
+     }
+    }
+   }
+  }
+ }
+}
+tasks.matching{it.name.startsWith("merge")&&it.name.endsWith("JniLibFolders")}.configureEach{dependsOn("extractNatives")}
+
+=== FILE: app/proguard-rules.pro ===
+# HiBlue – reguli R8/ProGuard (build release)
+-keepattributes Signature,*Annotation*
+-dontwarn org.json.**
+
+# LibGDX (THE JUDGMENT) – păstrăm clasele accesate prin reflexie
+-keep class com.badlogic.gdx.** { *; }
+-keepclassmembers class com.badlogic.gdx.** { *; }
+-keep class com.badlogic.gdx.graphics.g3d.environment.** { *; }
+-keep class com.badlogic.gdx.math.** { *; }
+
+=== FILE: app/src/main/AndroidManifest.xml ===
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ <uses-permission android:name="android.permission.INTERNET"/>
+ <uses-permission android:name="android.permission.VIBRATE"/>
+ <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+ <application android:label="HiBlue" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:theme="@style/Theme.HiBlue" android:enableOnBackInvokedCallback="false" android:allowBackup="false">
+  <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait" android:windowSoftInputMode="adjustResize" android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout">
+   <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+  </activity>
+  <activity android:name="ro.lingurar.judgment.JudgmentActivity" android:exported="false" android:screenOrientation="landscape" android:theme="@style/Theme.HiBlue" android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
+ </application>
+</manifest>
+
+=== FILE: app/src/main/java/ro/lingurar/hiblue/nativegames/NativeGames.kt ===
+package ro.lingurar.hiblue.nativegames
+
+import android.content.Context
+import android.content.Intent
+import ro.lingurar.judgment.JudgmentActivity
+
+/**
+ * Un joc nativ înregistrat în host.
+ *
+ * runtime: "kotlin" | "godot" | "unity"
+ * intentFactory: construiește Intent-ul către Activity-ul jocului (declarat în AndroidManifest de autorul jocului).
+ *
+ * Contract de rezultat: jocul se închide cu setResult(RESULT_OK, intent) și pune în intent
+ * EXTRA_SCORE (Int) și EXTRA_SECONDS (Int). Scorul NU este de încredere: este revalidat pe server.
+ */
+class NativeGameEntry(
+    val id: String,
+    val runtime: String,
+    val intentFactory: (Context) -> Intent
+)
+
+object NativeGames {
+    const val EXTRA_GAME_ID = "hb.game.id"
+    const val EXTRA_SCORE = "hb.game.score"
+    const val EXTRA_SECONDS = "hb.game.seconds"
+
+    private val idRe = Regex("^[a-z0-9][a-z0-9_-]{1,31}$")
+    private val runtimes = setOf("kotlin", "godot", "unity")
+    private val entries = LinkedHashMap<String, NativeGameEntry>()
+
+    @Synchronized
+    fun register(e: NativeGameEntry) {
+        require(idRe.matches(e.id)) { "id de joc invalid: " + e.id }
+        require(e.runtime in runtimes) { "runtime invalid: " + e.runtime }
+        entries[e.id] = e
+    }
+
+    @Synchronized
+    fun get(id: String): NativeGameEntry? = entries[id]
+
+    @Synchronized
+    fun list(): List<NativeGameEntry> = entries.values.toList()
+
+    /**
+     * Jocurile native ale aplicației. Din update0.0.8: primul joc nativ Kotlin, THE JUDGMENT.
+     * Activity-ul JudgmentActivity (LibGDX) se lansează prin Intent și întoarce scorul
+     * prin EXTRA_SCORE / EXTRA_SECONDS (vezi ro.lingurar.judgment.JudgmentActivity).
+     */
+    fun registerBuiltIn() {
+        register(NativeGameEntry("judgment", "kotlin") { ctx ->
+            Intent(ctx, JudgmentActivity::class.java)
+        })
+    }
+}
+
+=== FILE: app/src/main/java/ro/lingurar/judgment/JudgmentActivity.kt ===
+package ro.lingurar.judgment
+
+import android.content.Intent
+import android.os.Bundle
+import com.badlogic.gdx.backends.android.AndroidApplication
+import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration
+import ro.lingurar.hiblue.nativegames.NativeGames
+
+/**
+ * Host Activity pentru THE JUDGMENT. Extinde AndroidApplication (LibGDX) —
+ * creează contextul GL, pornește thread-ul de randare și gestionează lifecycle.
+ *
+ * Contract HiBlue (vezi nativegames/NativeGames.kt):
+ *  - lansat cu Intent.putExtra(EXTRA_GAME_ID, "judgment")
+ *  - la final: setResult(RESULT_OK, intent cu EXTRA_SCORE + EXTRA_SECONDS) → finish()
+ *  - back/anulare: setResult(RESULT_CANCELED) → finish()
+ *
+ * Scorul (10 dacă ușa e deschisă, 0 dacă anulat) este nesigur — host-ul îl revalidează prin SDK.
+ */
+class JudgmentActivity : AndroidApplication() {
+
+    private var startTimeMs: Long = 0L
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        startTimeMs = System.currentTimeMillis()
+        val gameId = intent?.getStringExtra(NativeGames.EXTRA_GAME_ID) ?: "judgment"
+
+        val cfg = AndroidApplicationConfiguration().apply {
+            useGL30 = true          // OpenGL ES 3.0 (minSdk 24 = Android 7+)
+            hideStatusBar = true
+            useImmersiveMode = true
+            useWakelock = true      // evită sleep în timpul jocului
+            disableAudio = false
+        }
+
+        val game = JudgmentGame(
+            gameId = gameId,
+            onExit = { score -> finishWithResult(score) }
+        )
+        initialize(game, cfg)
+    }
+
+    /** Apelat din firul LibGDX (render thread) — post-ezăm pe UI thread pentru finish(). */
+    private fun finishWithResult(score: Int) {
+        runOnUiThread {
+            val secs = ((System.currentTimeMillis() - startTimeMs) / 1000).toInt()
+            val data = Intent().apply {
+                putExtra(NativeGames.EXTRA_GAME_ID, "judgment")
+                putExtra(NativeGames.EXTRA_SCORE, score)
+                putExtra(NativeGames.EXTRA_SECONDS, secs)
+            }
+            setResult(RESULT_OK, data)
+            finish()
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        // Back = anulare (RESULT_CANCELED); host-ul va raporta status=cancelled.
+        setResult(RESULT_CANCELED)
+        finish()
+    }
+}
+
+=== FILE: app/src/main/java/ro/lingurar/judgment/JudgmentGame.kt ===
+package ro.lingurar.judgment
+
+import com.badlogic.gdx.ApplicationAdapter
+import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.graphics.GL20
+import com.badlogic.gdx.graphics.PerspectiveCamera
+import com.badlogic.gdx.graphics.g3d.Environment
+import com.badlogic.gdx.graphics.g3d.ModelBatch
+import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
+import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight
+import com.badlogic.gdx.math.Vector3
+
+/**
+ * THE JUDGMENT — prototip first-person 3D horror.
+ *
+ * Camera închisă, lanternă (SpotLight), ușă interactivă, audio ambient procedural.
+ * Jucătorul găsește ușa → o deschide → jocul se termină cu scor=10.
+ * Ieșire/anulare → scor=0.
+ */
+class JudgmentGame(
+    private val gameId: String,
+    private val onExit: (Int) -> Unit
+) : ApplicationAdapter() {
+
+    private lateinit var camera: PerspectiveCamera
+    private lateinit var batch: ModelBatch
+    private lateinit var environment: Environment
+    private lateinit var room: Room
+    private lateinit var player: FirstPersonPlayer
+    private lateinit var flashlight: Flashlight
+    private lateinit var controls: TouchControls
+    private lateinit var door: Door
+    private lateinit var atmosphere: Atmosphere
+
+    private var completed = false
+    private var exitRequested = false
+    private var exitScore = 0
+    private var fpsLogTimer = 0f
+
+    override fun create() {
+        batch = ModelBatch()
+
+        camera = PerspectiveCamera(67f, Gdx.graphics.width.toFloat(), Gdx.graphics.height.toFloat())
+        camera.near = 0.1f
+        camera.far = 100f
+        camera.position.set(0f, 1.7f, 4f)
+        camera.lookAt(0f, 1.7f, 0f)
+        camera.update()
+
+        // Ambient foarte slab (approape întuneric) + o lumină direcțională slabă (lună)
+        environment = Environment()
+        environment.set(ColorAttribute(ColorAttribute.AmbientLight, 0.04f, 0.04f, 0.06f, 1f))
+        environment.add(DirectionalLight().set(0.12f, 0.12f, 0.16f, -0.4f, -0.8f, -0.3f))
+
+        room = Room()
+        door = Door(Vector3(0f, 1.5f, -5.85f))   // pe peretele de nord (−Z)
+        flashlight = Flashlight(environment, camera)
+        player = FirstPersonPlayer(camera)
+
+        controls = TouchControls(
+            player = player,
+            door = door,
+            width = Gdx.graphics.width.toFloat(),
+            height = Gdx.graphics.height.toFloat()
+        )
+        controls.onInteract = {
+            if (door.isPlayerClose(player.position) && !completed && !door.isOpening()) {
+                door.open()
+                completed = false // se setează când ușa termină de se deschis
+            }
+        }
+        controls.onExit = {
+            exitRequested = true
+            exitScore = if (completed) 10 else 0
+        }
+        Gdx.input.inputProcessor = controls
+
+        atmosphere = Atmosphere()
+        atmosphere.start()
+
+        Gdx.app.log("Judgment", "Prototip inițializat. gameId=$gameId")
+    }
+
+    override fun render() {
+        val dt = Gdx.graphics.deltaTime
+
+        // Ieșire solicitată
+        if (exitRequested) {
+            atmosphere.dispose()
+            onExit(exitScore)
+            return
+        }
+
+        controls.update(dt)
+        player.update(dt, room.getColliders())
+        flashlight.update()
+        door.update(dt)
+
+        // Ușa s-a deschis complet → joc terminat
+        if (door.isOpenComplete() && !completed) {
+            completed = true
+            exitRequested = true
+            exitScore = 10
+            Gdx.app.log("Judgment", "Ușa deschisă! Scor=10. Întoarcem în HiBlue.")
+        }
+
+        // Log FPS o dată pe secundă (măsurători de performanță)
+        fpsLogTimer += dt
+        if (fpsLogTimer >= 1f) {
+            Gdx.app.log("Judgment", "FPS=${Gdx.graphics.framesPerSecond} pos=${player.position}")
+            fpsLogTimer = 0f
+        }
+
+        Gdx.gl.glViewport(0, 0, Gdx.graphics.width, Gdx.graphics.height)
+        Gdx.gl.glClearColor(0.02f, 0.02f, 0.03f, 1f)
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT or GL20.GL_DEPTH_BUFFER_BIT)
+
+        batch.begin(camera)
+        batch.render(room.getInstances(), environment)
+        batch.render(door.getInstance(), environment)
+        batch.end()
+
+        controls.render()
+
+        atmosphere.update(dt)
+    }
+
+    override fun resize(width: Int, height: Int) {
+        camera.viewportWidth = width.toFloat()
+        camera.viewportHeight = height.toFloat()
+        camera.update()
+        controls.resize(width.toFloat(), height.toFloat())
+    }
+
+    override fun pause() {
+        atmosphere.pause()
+    }
+
+    override fun resume() {
+        atmosphere.resume()
+    }
+
+    override fun dispose() {
+        batch.dispose()
+        room.dispose()
+        door.dispose()
+        controls.dispose()
+        atmosphere.dispose()
+    }
+}
+
+=== FILE: app/src/main/java/ro/lingurar/judgment/Room.kt ===
+package ro.lingurar.judgment
+
+import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.graphics.GL20
+import com.badlogic.gdx.graphics.VertexAttributes
+import com.badlogic.gdx.graphics.g3d.Material
+import com.badlogic.gdx.graphics.g3d.Model
+import com.badlogic.gdx.graphics.g3d.ModelInstance
+import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
+import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
+import com.badlogic.gdx.math.Vector3
+import com.badlogic.gdx.utils.Array as GdxArray
+import com.badlogic.gdx.utils.Disposable
+
+/**
+ * Camera închisă pentru prototipul THE JUDGMENT.
+ * Construită procedural din box-uri: podea, tavan, 4 pereți.
+ * Dimensiuni: 12×12 unități podea, 4 unități înălțime.
+ *
+ * Pereții au AABB-uri pentru coliziune (vezi getColliders).
+ */
+class Room : Disposable {
+    private val model: Model
+    val instances = GdxArray<ModelInstance>()
+
+    // AABB-uri pentru coliziune: (min, max) în coordonate world.
+    private val colliders = mutableListOf<Pair<Vector3, Vector3>>()
+
+    init {
+        val builder = ModelBuilder()
+        val usage = VertexAttributes.Usage.Position.toLong() or VertexAttributes.Usage.Normal.toLong()
+
+        builder.begin()
+
+        // Podea — gri foarte întunecat, ușor reflectivă
+        val floorMat = Material(ColorAttribute.createDiffuse(Color(0.07f, 0.07f, 0.08f, 1f)))
+        builder.part("floor", GL20.GL_TRIANGLES, usage, floorMat).box(0f, 0f, 0f, 12f, 0.2f, 12f)
+
+        // Tavan — și mai întunecat
+        val ceilMat = Material(ColorAttribute.createDiffuse(Color(0.04f, 0.04f, 0.05f, 1f)))
+        builder.part("ceiling", GL20.GL_TRIANGLES, usage, ceilMat).box(0f, 4f, 0f, 12f, 0.2f, 12f)
+
+        // Pereți — albastru-gri întuneric
+        val wallMat = Material(ColorAttribute.createDiffuse(Color(0.11f, 0.09f, 0.13f, 1f)))
+
+        // Perete nord (−Z)
+        builder.part("wall_n", GL20.GL_TRIANGLES, usage, wallMat).box(0f, 2f, -6f, 12f, 4f, 0.2f)
+        // Perete sud (+Z)
+        builder.part("wall_s", GL20.GL_TRIANGLES, usage, wallMat).box(0f, 2f, 6f, 12f, 4f, 0.2f)
+        // Perete est (+X)
+        builder.part("wall_e", GL20.GL_TRIANGLES, usage, wallMat).box(6f, 2f, 0f, 0.2f, 4f, 12f)
+        // Perete vest (−X)
+        builder.part("wall_w", GL20.GL_TRIANGLES, usage, wallMat).box(-6f, 2f, 0f, 0.2f, 4f, 12f)
+
+        model = builder.end()
+        instances.add(ModelInstance(model))
+
+        // Coliziuni (pereți sunt paralelipipede subțiri)
+        colliders.add(Vector3(-6.2f, 0f, -6.1f) to Vector3(6.2f, 4f, -5.9f))   // N
+        colliders.add(Vector3(-6.2f, 0f, 5.9f) to Vector3(6.2f, 4f, 6.1f))     // S
+        colliders.add(Vector3(5.9f, 0f, -6.1f) to Vector3(6.1f, 4f, 6.1f))     // E
+        colliders.add(Vector3(-6.1f, 0f, -6.1f) to Vector3(-5.9f, 4f, 6.1f))   // V
+    }
+
+    fun getInstances(): GdxArray<ModelInstance> = instances
+    fun getColliders(): List<Pair<Vector3, Vector3>> = colliders
+
+    override fun dispose() {
+        model.dispose()
+    }
+}
+
+=== FILE: app/src/main/java/ro/lingurar/judgment/FirstPersonPlayer.kt ===
+package ro.lingurar.judgment
+
+import com.badlogic.gdx.graphics.PerspectiveCamera
+import com.badlogic.gdx.math.Vector3
+
+/**
+ * Jucător first-person: poziție, fizică (gravitație), coliziune sferă-vs-AABB.
+ * Camera este poziționată la nivelul ochilor (1.7 unități) și orientată după yaw/pitch.
+ */
+class FirstPersonPlayer(private val camera: PerspectiveCamera) {
+
+    val position = Vector3(0f, 1.7f, 4f)
+
+    var yaw = 0f      // unghi orizontal (radiani)
+    var pitch = 0f    // unghi vertical (radiani)
+
+    // Input de mișcare (setat de TouchControls): -1..1
+    var moveX = 0f    // strafe
+    var moveZ = 0f    // înainte/înapoi
+
+    private val gravity = -25f
+    private val speed = 3.5f
+    private val radius = 0.4f
+    private val eyeHeight = 1.7f
+    private val vy = FloatArray(1)  // velocitate verticală (array ca să-l putem muta din closure)
+
+    private val maxPitch = Math.toRadians(85.0).toFloat()
+
+    fun update(dt: Float, colliders: List<Pair<Vector3, Vector3>>) {
+        // Gravitație (jucătorul stă pe podea)
+        vy[0] += gravity * dt
+        position.y += vy[0] * dt
+        if (position.y < eyeHeight) {
+            position.y = eyeHeight
+            vy[0] = 0f
+        }
+
+        // Vectori forward/right din yaw (mișcare pe plan orizontal)
+        val sinY = Math.sin(yaw.toDouble()).toFloat()
+        val cosY = Math.cos(yaw.toDouble()).toFloat()
+        // forward = (-sin(yaw), 0, -cos(yaw));  right = (cos(yaw), 0, -sin(yaw))
+        val fx = -sinY; val fz = -cosY
+        val rx = cosY;  val rz = -sinY
+
+        // Mișcare cu coliziune per-axă (slide de-a lungul pereților)
+        val mvLen = Math.sqrt((moveX * moveX + moveZ * moveZ).toDouble())
+        if (mvLen > 0.01f) {
+            val dx = (fx * moveZ + rx * moveX) / mvLen * speed * dt
+            val dz = (fz * moveZ + rz * moveX) / mvLen * speed * dt
+
+            // Încercăm mișcarea pe X
+            val oldX = position.x
+            position.x += dx
+            if (Collision.sphereVsAABBs(position.x, position.z, colliders, radius)) {
+                position.x = oldX
+            }
+            // Încercăm mișcarea pe Z
+            val oldZ = position.z
+            position.z += dz
+            if (Collision.sphereVsAABBs(position.x, position.z, colliders, radius)) {
+                position.z = oldZ
+            }
+        }
+
+        // Actualizăm camera
+        camera.position.set(position)
+        val cp = Math.cos(pitch.toDouble()).toFloat()
+        camera.direction.set(
+            (-sinY * cp),
+            Math.sin(pitch.toDouble()).toFloat(),
+            (-cosY * cp)
+        )
+        camera.up.set(0f, 1f, 0f)
+        camera.update()
+    }
+
+    fun look(dx: Float, dy: Float) {
+        yaw -= dx * 0.004f
+        pitch += dy * 0.004f     // +y sus = pitch sus (în coordonate screen y e invers, dar TouchControls negatează)
+        if (pitch > maxPitch) pitch = maxPitch
+        if (pitch < -maxPitch) pitch = -maxPitch
+    }
+}
+
+/**
+ * Matematică de coliziune sferă-vs-AABB, izolată ca să fie testabilă în JVM (fără GL).
+ */
+object Collision {
+    fun sphereVsAABB(px: Float, pz: Float, min: Vector3, max: Vector3, radius: Float): Boolean {
+        val cx = Math.max(min.x, Math.min(px, max.x))
+        val cz = Math.max(min.z, Math.min(pz, max.z))
+        val dx = px - cx
+        val dz = pz - cz
+        return dx * dx + dz * dz < radius * radius
+    }
+
+    fun sphereVsAABBs(px: Float, pz: Float, colliders: List<Pair<Vector3, Vector3>>, radius: Float): Boolean {
+        for ((min, max) in colliders) {
+            if (sphereVsAABB(px, pz, min, max, radius)) return true
+        }
+        return false
+    }
+}
+
+=== FILE: app/src/main/java/ro/lingurar/judgment/Flashlight.kt ===
+package ro.lingurar.judgment
+
+import com.badlogic.gdx.graphics.PerspectiveCamera
+import com.badlogic.gdx.graphics.g3d.Environment
+import com.badlogic.gdx.graphics.g3d.environment.SpotLight
+import com.badlogic.gdx.math.Vector3
+
+/**
+ * Lanternă: SpotLight warm atașat de camera (poziție + direcție actualizate în fiecare frame).
+ * Culoare warm (0.9, 0.85, 0.7) pentru atmosferă; cutoff 35° — con decent de lumină.
+ */
+class Flashlight(
+    private val environment: Environment,
+    private val camera: PerspectiveCamera
+) {
+    private val light = SpotLight()
+    private val pos = Vector3()
+    private val dir = Vector3()
+
+    init {
+        light.set(
+            0.9f, 0.85f, 0.7f,     // culoare warm
+            pos,                    // poziție (actualizată în update)
+            dir,                    // direcție (actualizată în update)
+            30f,                    // intensitate
+            35f,                    // cutoff (grade) — con de lumină
+            1f                      // exponent (fade la marginea conului)
+        )
+        environment.add(light)
+    }
+
+    fun update() {
+        pos.set(camera.position)
+        dir.set(camera.direction)
+        light.position.set(pos)
+        light.direction.set(dir)
+    }
+}
+
+=== FILE: app/src/main/java/ro/lingurar/judgment/Door.kt ===
+package ro.lingurar.judgment
+
+import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.graphics.VertexAttributes
+import com.badlogic.gdx.graphics.g3d.Material
+import com.badlogic.gdx.graphics.g3d.Model
+import com.badlogic.gdx.graphics.g3d.ModelInstance
+import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
+import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
+import com.badlogic.gdx.math.Vector3
+import com.badlogic.gdx.utils.Disposable
+
+/**
+ * Ușa interactivă din prototip. Box 1.5×3×0.2, culoare maro-închis.
+ * Se deschide alunecând lateral (translate +X) când jucătorul apasă interact și e aproape.
+ * După deschidere completă (2s), JudgmentGame termină jocul cu scor=10.
+ */
+class Door(val position: Vector3) : Disposable {
+    private val model: Model
+    val instance: ModelInstance
+    private var openProgress = 0f       // 0 = închisă, 1 = complet deschisă
+    private var opening = false
+    private val openSpeed = 0.5f        // 1/0.5 = 2 secunde
+    private val slideDistance = 1.6f    // cât alunecă lateral
+
+    init {
+        val builder = ModelBuilder()
+        val usage = VertexAttributes.Usage.Position.toLong() or VertexAttributes.Usage.Normal.toLong()
+        val mat = Material(ColorAttribute.createDiffuse(Color(0.22f, 0.14f, 0.09f, 1f)))
+        model = builder.createBox(1.5f, 3f, 0.2f, mat, usage)
+        instance = ModelInstance(model)
+        instance.transform.setToTranslation(position)
+    }
+
+    fun open() { opening = true }
+    fun isOpening(): Boolean = opening
+    fun isOpenComplete(): Boolean = openProgress >= 1f
+
+    fun isPlayerClose(playerPos: Vector3): Boolean {
+        // distanță pe XZ (ignorăm Y — jucătorul are 1.7, ușa centru 1.5)
+        val dx = playerPos.x - position.x
+        val dz = playerPos.z - position.z
+        return Math.sqrt((dx * dx + dz * dz).toDouble()).toFloat() < 2.5f
+    }
+
+    fun update(dt: Float) {
+        if (opening && openProgress < 1f) {
+            openProgress += dt * openSpeed
+            if (openProgress > 1f) openProgress = 1f
+            instance.transform.setToTranslation(
+                position.x + openProgress * slideDistance,
+                position.y,
+                position.z
+            )
+        }
+    }
+
+    fun getInstance(): ModelInstance = instance
+
+    override fun dispose() {
+        model.dispose()
+    }
+}
+
+=== FILE: app/src/main/java/ro/lingurar/judgment/TouchControls.kt ===
+package ro.lingurar.judgment
+
+import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.InputProcessor
+import com.badlogic.gdx.graphics.GL20
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer
+import com.badlogic.gdx.math.Vector2
+import kotlin.math.sqrt
+
+/**
+ * Controale touch pentru first-person pe mobil (multitouch):
+ *  - partea stângă (40% din ecran): joystick virtual pentru mișcare
+ *  - partea dreaptă: drag pentru look (rotire cameră)
+ *  - buton X colțul dreapta-sus: ieșire
+ *  - buton ▲ centru-dreapta (apare când esti aproape de ușă): interact
+ *
+ * InputProcessor adevărat (nu polling) — suportă multitouch corect.
+ */
+class TouchControls(
+    private val player: FirstPersonPlayer,
+    private val door: Door,
+    private var width: Float,
+    private var height: Float
+) : InputProcessor {
+
+    var onInteract: (() -> Unit)? = null
+    var onExit: (() -> Unit)? = null
+
+    private val shapes = ShapeRenderer()
+
+    // Joystick
+    private val joyCenter = Vector2()
+    private var joyPointer = -1
+    private val joyKnob = Vector2()
+    private val joyRadius = 90f
+    private val knobRadius = 38f
+    private val joyMaxRadius = 90f
+
+    // Look
+    private var lookPointer = -1
+    private var lastLookX = 0f
+    private var lastLookY = 0f
+
+    // Exit button (dreapta-sus)
+    private val exitBtn = FloatArray(3)
+
+    init {
+        layout()
+    }
+
+    fun resize(w: Float, h: Float) {
+        width = w; height = h
+        layout()
+    }
+
+    private fun layout() {
+        joyCenter.set(width * 0.18f, height * 0.22f)
+        exitBtn[0] = width - 50f
+        exitBtn[1] = height - 50f
+        exitBtn[2] = 28f
+    }
+
+    fun update(dt: Float) {
+        // nimic aici — totul se face prin InputProcessor
+    }
+
+    fun render() {
+        Gdx.gl.glEnable(GL20.GL_BLEND)
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
+        shapes.begin(ShapeRenderer.ShapeType.Filled)
+        shapes.setProjectionMatrix(com.badlogic.gdx.math.Matrix4().setToOrtho2D(0f, 0f, width, height))
+
+        // Bază joystick
+        shapes.setColor(0.3f, 0.3f, 0.4f, 0.25f)
+        shapes.circle(joyCenter.x, joyCenter.y, joyRadius)
+        // Knob
+        shapes.setColor(0.7f, 0.7f, 0.9f, 0.6f)
+        shapes.circle(joyCenter.x + joyKnob.x, joyCenter.y + joyKnob.y, knobRadius)
+
+        // Buton exit
+        shapes.setColor(0.8f, 0.2f, 0.2f, 0.55f)
+        shapes.circle(exitBtn[0], exitBtn[1], exitBtn[2])
+
+        // Buton interact (apare când jucătorul e aproape de ușă)
+        if (door.isPlayerClose(player.position) && !door.isOpening()) {
+            val ix = width * 0.78f
+            val iy = height * 0.5f
+            shapes.setColor(0.9f, 0.8f, 0.25f, 0.75f)
+            shapes.circle(ix, iy, 38f)
+            // Săgeată
+            shapes.setColor(0.1f, 0.1f, 0.1f, 1f)
+            shapes.triangle(ix - 8f, iy + 6f, ix + 8f, iy + 6f, ix, iy + 20f)
+        }
+
+        shapes.end()
+        Gdx.gl.glDisable(GL20.GL_BLEND)
+    }
+
+    fun dispose() {
+        shapes.dispose()
+    }
+
+    // ---------- InputProcessor ----------
+    override fun touchDown(screenX: Int, screenY: Int, pointer: Int, button: Int): Boolean {
+        val x = screenX.toFloat()
+        val y = screenY.toFloat()
+
+        // Buton exit
+        if (dist(x, y, exitBtn[0], exitBtn[1]) < exitBtn[2] * 1.4f) {
+            onExit?.invoke()
+            return true
+        }
+        // Buton interact (când e vizibil)
+        if (door.isPlayerClose(player.position) && !door.isOpening()) {
+            val ix = width * 0.78f
+            val iy = height * 0.5f
+            if (dist(x, y, ix, iy) < 45f) {
+                onInteract?.invoke()
+                return true
+            }
+        }
+
+        // Zone: stânga = joystick, dreapta = look
+        if (x < width * 0.4f && joyPointer == -1) {
+            joyPointer = pointer
+            joyCenter.set(x, y)
+            joyKnob.set(0f, 0f)
+        } else if (x >= width * 0.4f && lookPointer == -1) {
+            lookPointer = pointer
+            lastLookX = x
+            lastLookY = y
+        }
+        return true
+    }
+
+    override fun touchUp(screenX: Int, screenY: Int, pointer: Int, button: Int): Boolean {
+        if (pointer == joyPointer) {
+            joyPointer = -1
+            player.moveX = 0f
+            player.moveZ = 0f
+            joyKnob.set(0f, 0f)
+            // Repoziționăm joystick-ul la locația default
+            layout()
+        }
+        if (pointer == lookPointer) {
+            lookPointer = -1
+        }
+        return true
+    }
+
+    override fun touchDragged(screenX: Int, screenY: Int, pointer: Int): Boolean {
+        val x = screenX.toFloat()
+        val y = screenY.toFloat()
+
+        if (pointer == joyPointer) {
+            val dx = x - joyCenter.x
+            val dy = y - joyCenter.y
+            val len = sqrt(dx * dx + dy * dy)
+            val clamped = minOf(len, joyMaxRadius)
+            if (len > 0.01f) {
+                joyKnob.set(dx / len * clamped, dy / len * clamped)
+                player.moveX = joyKnob.x / joyMaxRadius
+                // În screen coords, +y e în jos; forward e -y (sus pe ecran)
+                player.moveZ = -joyKnob.y / joyMaxRadius
+            }
+        }
+        if (pointer == lookPointer) {
+            val dx = x - lastLookX
+            val dy = y - lastLookY
+            // dx > 0 = spre dreapta → yaw scade (privim spre dreapta)
+            // dy > 0 = în jos pe ecran → pitch scade (privim în jos)
+            player.look(dx, -dy)
+            lastLookX = x
+            lastLookY = y
+        }
+        return true
+    }
+
+    override fun mouseMoved(screenX: Int, screenY: Int): Boolean = false
+    override fun scrolled(amountX: Float, amountY: Float): Boolean = false
+    override fun keyDown(keycode: Int): Boolean = false
+    override fun keyUp(keycode: Int): Boolean = false
+    override fun keyTyped(character: Char): Boolean = false
+
+    private fun dist(x1: Float, y1: Float, x2: Float, y2: Float): Float =
+        sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
+}
+
+=== FILE: app/src/main/java/ro/lingurar/judgment/Atmosphere.kt ===
+package ro.lingurar.judgment
+
+import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.audio.AudioDevice
+
+/**
+ * Atmosferă audio procedurală: drone-ambient jos (~55 Hz cu modulație lentă).
+ * Generat în timp real pe un fir separat prin AudioDevice (44.1 kHz, mono).
+ * Pe some dispozitive fără AudioDevice funcțional, cădem silențios (jocul rămâne jucabil).
+ */
+class Atmosphere {
+    private val sampleRate = 22050
+    @Volatile private var running = false
+    private var thread: Thread? = null
+    private var device: AudioDevice? = null
+
+    fun start() {
+        if (running) return
+        running = true
+        thread = Thread(::run).apply { isDaemon = true; start() }
+    }
+
+    private fun run() {
+        var dev: AudioDevice? = null
+        try {
+            dev = Gdx.app.audio.newAudioDevice(sampleRate, false)
+            device = dev
+            val buf = FloatArray(512)
+            var t = 0.0
+            val dt = 1.0 / sampleRate
+            while (running) {
+                for (i in buf.indices) {
+                    // Frecvență bază 55 Hz, modulată lent ±1.5 Hz
+                    val f = 55.0 + Math.sin(t * 0.3) * 1.5
+                    // Fundamental + armonică de 1.5 + sub-bass la 0.3 Hz
+                    val s = Math.sin(t * 2.0 * Math.PI * f) * 0.10 +
+                            Math.sin(t * 2.0 * Math.PI * f * 1.5) * 0.03 +
+                            Math.sin(t * 2.0 * Math.PI * 0.3) * 0.015
+                    buf[i] = s.toFloat()
+                    t += dt
+                }
+                dev.writeSamples(buf, 0, buf.size)
+            }
+        } catch (e: Exception) {
+            // Audio poate eșua pe unele configurații — jocul rămâne fără sunet
+            Gdx.app.log("Judgment/Atmosphere", "Audio indisponibil: ${e.message}")
+        } finally {
+            try { dev?.dispose() } catch (e: Exception) {}
+            device = null
+        }
+    }
+
+    fun stop() {
+        running = false
+        try { thread?.join(500) } catch (e: Exception) {}
+        thread = null
+    }
+
+    fun pause() { stop() }
+    fun resume() { start() }
+    fun update(dt: Float) { /* nimic — drone-ul e continuu */ }
+    fun dispose() { stop() }
+}
+
+=== FILE: app/src/test/java/ro/lingurar/judgment/CollisionTest.kt ===
+package ro.lingurar.judgment
+
+import com.badlogic.gdx.math.Vector3
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/**
+ * Teste unitare JVM pentru matematica de coliziune (fără context GL necesar).
+ * Validarea că jucătorul nu trece prin pereți.
+ */
+class CollisionTest {
+
+    private val wallNorth = Vector3(-6.2f, 0f, -6.1f) to Vector3(6.2f, 4f, -5.9f)
+    private val wallEast = Vector3(5.9f, 0f, -6.1f) to Vector3(6.1f, 4f, 6.1f)
+    private val allWalls = listOf(wallNorth, wallEast)
+    private val playerRadius = 0.4f
+
+    @Test
+    fun playerInCenterDoesNotCollide() {
+        // Centrul camerei — departe de toți pereții
+        assertFalse(
+            Collision.sphereVsAABBs(0f, 0f, allWalls, playerRadius)
+        )
+    }
+
+    @Test
+    fun playerInsideWallCollides() {
+        // În interiorul peretelui nord (z = -6.0 e între -6.1 și -5.9)
+        assertTrue(
+            Collision.sphereVsAABB(0f, -6.0f, wallNorth.first, wallNorth.second, playerRadius)
+        )
+    }
+
+    @Test
+    fun playerJustOutsideWallDoesNotCollide() {
+        // La z = -5.3 (peretele e la -5.9 interior, jucător are raza 0.4)
+        // distanță până la perete = -5.9 - (-5.3) = 0.6 > 0.4 → nu colizionează
+        assertFalse(
+            Collision.sphereVsAABB(0f, -5.3f, wallNorth.first, wallNorth.second, playerRadius)
+        )
+    }
+
+    @Test
+    fun playerTouchingWallCollides() {
+        // La z = -5.5: distanță = 0.4 → exact la limită. 0.4*0.4 < 0.4*0.4? Nu (egal).
+        // La z = -5.4: distanță = 0.5 → 0.25 < 0.16? Nu.
+        // La z = -5.45: distanță = 0.45 → 0.2025 < 0.16? Nu.
+        // La z = -5.48: distanță = 0.42 → 0.1764 < 0.16? Nu.
+        // La z = -5.49: distanță = 0.41 → 0.1681 < 0.16? Nu.
+        // La z = -5.5: distanță = 0.4 → 0.16 < 0.16? Nu (strict).
+        // Mai aproape: z = -5.55: distanță = 0.35 → 0.1225 < 0.16 → da
+        assertTrue(
+            Collision.sphereVsAABB(0f, -5.55f, wallNorth.first, wallNorth.second, playerRadius)
+        )
+    }
+
+    @Test
+    fun playerNearEastWallCollides() {
+        // Peretele est: x între 5.9 și 6.1
+        // La x = 5.55: distanță = 0.35 → coliziune
+        assertTrue(
+            Collision.sphereVsAABB(5.55f, 0f, wallEast.first, wallEast.second, playerRadius)
+        )
+    }
+
+    @Test
+    fun playerFarFromEastWallSafe() {
+        // La x = 5.0: distanță = 0.9 > 0.4 → sigur
+        assertFalse(
+            Collision.sphereVsAABB(5.0f, 0f, wallEast.first, wallEast.second, playerRadius)
+        )
+    }
+}
+
+=== FILE: app/src/main/assets/games/catalog.js ===
+/* =====================================================================
+   HiBlue · Game Catalog · manifestele jocurilor existente
+   Un joc nou = un manifest aici + (web) un script care îl înregistrează în Registry.
+   Se încarcă ÎNAINTE de scripturile jocurilor. Vezi docs/ADDING_WEB_GAME.md.
+   ===================================================================== */
+(function(){
+"use strict";
+var GP=window.GamePlatform;
+[
+ {
+  "id": "flyby",
+  "name": "Flyby",
+  "version": "0.0.2",
+  "type": "arcade",
+  "runtime": "web",
+  "entry": "games/flyby.js",
+  "orientation": "portrait",
+  "capabilities": [
+   "identity",
+   "scores",
+   "leaderboard",
+   "haptics",
+   "events"
+  ],
+  "meta": {
+   "tagline": "Zboară cât mai departe",
+   "developer": "Lingurar Marius",
+   "description": "Atinge ecranul ca să urci, treci prin porțile de energie și ajunge cât mai departe. Cu cât mergi mai departe, cu atât viteza crește și golul se strânge."
+  },
+  "launch": {
+   "continueAfterScore": false
+  }
+ },
+ {
+  "id": "flipnova",
+  "name": "Flip Nova",
+  "version": "0.0.3",
+  "type": "arcade",
+  "runtime": "web",
+  "entry": "game_flipnova.js",
+  "orientation": "portrait",
+  "capabilities": [
+   "identity",
+   "scores",
+   "leaderboard",
+   "haptics",
+   "events"
+  ],
+  "meta": {
+   "tagline": "Arcade · gravitație inversată",
+   "developer": "Lingurar Marius",
+   "description": "Atinge ecranul ca să inversezi gravitația. Adună orburi de energie, evită minele care plutesc și ține ritmul — viteza crește cu fiecare orb."
+  },
+  "launch": {
+   "continueAfterScore": false
+  }
+ },
+ {
+  "id": "myblue",
+  "name": "My Blue",
+  "version": "0.0.5",
+  "type": "pet",
+  "runtime": "web",
+  "entry": "game_myblue.js",
+  "orientation": "portrait",
+  "capabilities": [
+   "identity",
+   "scores",
+   "leaderboard",
+   "haptics",
+   "events"
+  ],
+  "meta": {
+   "tagline": "Pet virtual · casă · aventuri",
+   "developer": "Lingurar Marius",
+   "description": "Ai grijă de Blue, un ursuleț de pluș cu o căsuță numai a lui. Hrănește-l, spală-l, joacă-te, alege-i haine și decorează camerele. Atinge-l ca să-l mângâi – îi place! Pornește în questuri prin grădină sau condu până la magazin și întoarce-te cu provizii."
+  },
+  "launch": {
+   "continueAfterScore": true
+  }
+ },
+ {
+  "id": "judgment",
+  "name": "The Judgment",
+  "version": "0.0.8",
+  "type": "horror",
+  "runtime": "native-kotlin",
+  "entry": "judgment",
+  "orientation": "landscape",
+  "capabilities": [
+   "identity",
+   "scores",
+   "leaderboard",
+   "events"
+  ],
+  "meta": {
+   "tagline": "First-person psychological horror",
+   "developer": "Lingurar Marius",
+   "description": "Te trezești într-o cameră pe care nu o recunoști. Singura lumină vine de la lanterna care îți tremură în mână. Găsește ieșirea — dar ce te așteaptă dincolo de ușă? Primul joc nativ Kotlin în HiBlue (LibGDX)."
+  },
+  "launch": {
+   "continueAfterScore": false
+  }
+ }
+].forEach(function(m){
+ var r=GP.catalog.add(m);
+ if(!r.ok)console.error("Manifest invalid ("+m.id+"): "+r.errors.join("; "));
+});
+
+/* --- Cover pentru jocul nativ The Judgment (fără script web separat) ---
+   Jocurile web își înregistrează cover-ul prin GM.games.push -> registry.registerWeb.
+   Jocurile native nu au script web, deci înregistrăm cover-ul aici direct.
+   Factory dummy (nu se apelează pentru runtime native-kotlin; Native Game Adapter
+   lansează Activity-ul, nu factory-ul web). --- */
+GP.registry.registerWeb("judgment", function(){}, {
+  cover: function(k){
+    return '<svg viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice"><defs>'+
+      '<linearGradient id="'+k+'bg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#0a0810"/><stop offset=".4" stop-color="#140a14"/><stop offset="1" stop-color="#020104"/></linearGradient>'+
+      '<radialGradient id="'+k+'gl" cx=".5" cy=".55" r=".45"><stop stop-color="#3a2a18" stop-opacity=".5"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>'+
+      '<linearGradient id="'+k+'door" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#1a0e08"/><stop offset="1" stop-color="#0a0504"/></linearGradient>'+
+      '<radialGradient id="'+k+'sp" cx=".5" cy=".5" r=".5"><stop stop-color="#d4a850" stop-opacity=".7"/><stop offset="1" stop-color="#d4a850" stop-opacity="0"/></radialGradient></defs>'+
+      '<rect width="300" height="400" fill="url(#'+k+'bg)"/>'+
+      '<rect width="300" height="400" fill="url(#'+k+'gl)"/>'+
+      '<path d="M0 320 L300 320 L300 400 L0 400 Z" fill="#080604"/>'+
+      '<rect x="120" y="170" width="60" height="155" fill="url(#'+k+'door)" stroke="#2a1408" stroke-width="1"/>'+
+      '<circle cx="168" cy="245" r="2.5" fill="#5a3a1a"/>'+
+      '<ellipse cx="150" cy="260" rx="50" ry="80" fill="url(#'+k+'sp)" opacity=".6"/>'+
+      '<g fill="#d4a850" opacity=".8"><circle cx="135" cy="180" r="1"/><circle cx="165" cy="200" r="1.2"/><circle cx="180" cy="230" r=".8"/><circle cx="125" cy="220" r="1"/><circle cx="200" cy="180" r=".7"/></g>'+
+      '<g fill="#6a5a4a" opacity=".3"><circle cx="80" cy="120" r="1"/><circle cx="240" cy="100" r="1"/><circle cx="50" cy="200" r=".8"/><circle cx="260" cy="220" r=".8"/></g>'+
+      '<text x="150" y="375" text-anchor="middle" fill="#8a1818" font-size="20" font-weight="800" font-family="serif" letter-spacing="3">THE JUDGMENT</text>'+
+      '<text x="150" y="393" text-anchor="middle" fill="#4a3030" font-size="9" font-weight="400" font-family="system-ui" letter-spacing="1.5">PROTOTIP · 0.0.8</text>'+
+      '</svg>';
+  }
+});
+})();
+
+=== FILE: supabase/update0.0.8.sql ===
+-- =====================================================================
+-- HiBlue · update0.0.8 — THE JUDGMENT (primul joc nativ Kotlin)
+-- Rulează O SINGURĂ DATĂ în Supabase → SQL Editor (după update0.0.4.sql). Idempotent.
+--
+-- Adaugă 'judgment' în catalogul public.games. Nu modifică nimic existent.
+-- max_score=100, pace=0.5 → scorul prototipului (10 pentru completare) trece
+-- mereu anti-cheat-ul (10 < 100, și 10 < ceil(secs/0.5)+2 pentru orice secs>=4).
+--
+-- Fără acest rând, scorurile trimise de The Judgment sunt respinse de submit_score().
+-- =====================================================================
+
+insert into public.games (id, name, max_score, pace)
+values ('judgment', 'The Judgment', 100, 0.5)
+on conflict (id) do update
+set name = excluded.name, max_score = excluded.max_score, pace = excluded.pace;
+
+=== FILE: README.md ===
+# HiBlue – update0.0.8
+
+**THE JUDGMENT** — primul joc nativ Kotlin în HiBlue. First-person psychological horror
+prototip, construit cu LibGDX 1.12.1, integrat cu infrastructura de jocuri native din
+update0.0.6/0.0.7.
+
+## Ce aduce update0.0.8
+
+- **Engine selectat:** LibGDX 1.12.1 (Java/Kotlin pur, Activity Android nativ, fără editor,
+  Gradle standard în CI). Justificare completă în `docs/THE_JUDGMENT.md`.
+- **Prototip funcțional (compilabil):**
+  - O cameră închisă procedurală (12×12×4 unități)
+  - Cameră first-person cu proiecție perspectivă (FOV 67)
+  - Controale touch multitouch: joystick (mișcare) + drag (look) + butoane (exit/interact)
+  - Coliziune sferă-vs-AABB custom (fără native deps) + gravitație
+  - Ușă interactivă (alunecă lateral la interact; completează jocul)
+  - Lanternă (SpotLight warm atașat de cameră, cutoff 35°)
+  - Iluminare atmosferică (ambient 0.04 + direcțional slab 0.12 + spotlight)
+  - Audio ambient procedural (drone ~55 Hz via AudioDevice)
+  - Buton exit (întoarce scor în HiBlue)
+- **Integrare HiBlue:**
+  - `JudgmentActivity` (LibGDX `AndroidApplication`) declarat în manifest (landscape)
+  - Înregistrat în `NativeGames.registerBuiltIn()` cu runtime `kotlin`
+  - Manifest în `games/catalog.js` cu runtime `native-kotlin`, entry `judgment`
+  - Cover SVG procedural în `games/catalog.js` (înregistrat direct pentru jocul nativ)
+  - La completare: scor=10 (RESULT_OK cu EXTRA_SCORE/EXTRA_SECONDS)
+  - La anulare: RESULT_CANCELED
+- **Backend:** `supabase/update0.0.8.sql` adaugă `judgment` în `public.games`.
+- **Teste:** `CollisionTest.kt` (JVM) validează matematica de coliziune.
+
+## Aplicare
+
+Pune `update0.0.8.txt` în rădăcina repo-ului (sau în `updates/`) alături de `hiblue.txt`
+și update-urile anterioare. Workflow-ul `Build APK` îl aplică în ordine.
+
+## Supabase (necesar pentru clasament)
+
+Rulează `supabase/update0.0.8.sql` în SQL Editor (după `update0.0.4.sql` sau `update0.0.7.sql`).
+Fără el, scorurile The Judgment sunt respinse de `submit_score()`.
+
+## Verificat automat (CI)
+
+- Parser-ul din `build.yml` aplică update-ul peste `hiblue.txt`.
+- `gradle assembleDebug` compilează tot Kotlin-ul (inclusiv LibGDX deps).
+- Task-ul `extractNatives` folosește importuri explicite (`java.io.File`, `java.util.zip.ZipFile`) — compatibil Kotlin DSL.
+- Native libs (`libgdx.so`) sunt extrase automat per-ABI în `jniLibs/`.
+- Teste unitare JVM (`CollisionTest`) trec.
+
+## NU a fost verificat
+
+- **Runtime pe dispozitiv fizic** — necesită telefon Android pentru a confirma:
+  randare, performanță FPS, responsivitate touch, redare audio.
+- **Integrarea cu NativeBridge pe telefon** — lansarea din Games room și întoarcerea
+  scorului prin Intent.
+- **Calitatea vizuală** — shaderele default LibGDX sunt basic; post-procesare horror
+  (fog, vignette, grain) urmează în faza următoare.
+
+## Limitări
+
+- **Fără save** — prototipul nu persistă progresul (integrare SDK în fază următoare).
+- **Fără narativă** — doar mecanica de bază (găsește ușa, deschide-o).
+- **Fără Physics Bullet** — coliziune custom; rigid body dynamics în fază următoare.
+- **Audio minimal** — un singur drone procedural; pipeline audio complet urmează.
+- **Orientare landscape** — Launcher-ul host-ului o setează automat; prototipul
+  declară `screenOrientation=landscape` ca fallback.
+
+## Documentație
+
+- `docs/THE_JUDGMENT.md` — fezabilitate, arhitectură, limitări, pași următori
+- `docs/NATIVE_GAMES.md` — contract integrare jocuri native (din 0.0.7)
+- `docs/ARCHITECTURE.md` — arhitectura generală (din 0.0.7)
+
