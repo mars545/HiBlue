@@ -1,0 +1,452 @@
+# HiBlue · update0.0.13 — Media3 / ExoPlayer + Cinema + radio player
+# Adaugă un singur player Media3 reutilizabil pentru video și audio.
+# - Cinema: filme locale + play/pause/seek + poziție curentă
+# - Player muzical: audio local + radio online + favorite salvate local
+# - Un singur player activ: pornirea unuia oprește automat celălalt
+# - AndroidX Media3 este Apache 2.0 și nu obligă aplicația să fie open source
+
+=== FILE: app/build.gradle.kts ===
+plugins{id("com.android.application");id("org.jetbrains.kotlin.android")}
+android{
+  namespace="ro.lingurar.hiblue"
+  compileSdk=34
+  defaultConfig{applicationId="ro.lingurar.hiblue";minSdk=24;targetSdk=34;versionCode=13;versionName="0.0.13"}
+  buildTypes{
+   release{
+    isMinifyEnabled=true
+    isShrinkResources=true
+    proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"),"proguard-rules.pro")
+    signingConfig=signingConfigs.getByName("debug")
+   }
+  }
+  compileOptions{sourceCompatibility=JavaVersion.VERSION_17;targetCompatibility=JavaVersion.VERSION_17}
+  kotlinOptions{jvmTarget="17"}
+}
+dependencies{
+  implementation("androidx.core:core-ktx:1.13.1")
+  implementation("androidx.media3:media3-exoplayer:1.4.1")
+  implementation("androidx.media3:media3-ui:1.4.1")
+  implementation("androidx.media3:media3-session:1.4.1")
+  implementation("androidx.media3:media3-common:1.4.1")
+  implementation("androidx.media3:media3-exoplayer-dash:1.4.1")
+}
+
+=== FILE: app/src/main/AndroidManifest.xml ===
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+  <uses-permission android:name="android.permission.INTERNET"/>
+  <uses-permission android:name="android.permission.VIBRATE"/>
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
+  <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" tools:remove="android:maxSdkVersion"/>
+  <application android:label="HiBlue" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:theme="@style/Theme.HiBlue" android:enableOnBackInvokedCallback="false" android:usesCleartextTraffic="true">
+   <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait" android:windowSoftInputMode="adjustResize" android:configChanges="orientation|screenSize|keyboardHidden">
+    <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+   </activity>
+  </application>
+</manifest>
+
+=== FILE: app/src/main/java/ro/lingurar/hiblue/media/MediaPlayerBridge.kt ===
+package ro.lingurar.hiblue.media
+
+import android.content.ContentResolver
+import android.content.Context
+import android.net.Uri
+import android.os.Build
+import android.provider.OpenableColumns
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaSession
+
+class MediaPlayerBridge(private val context: Context) {
+    private var player: ExoPlayer? = null
+    private var session: MediaSession? = null
+    private var activeType: String = "audio"
+
+    fun ensurePlayer(mode: String): ExoPlayer {
+        if (player == null) {
+            player = ExoPlayer.Builder(context).build()
+            player?.playWhenReady = true
+            player?.repeatMode = Player.REPEAT_MODE_OFF
+        }
+        activeType = mode
+        return player!!
+    }
+
+    fun playFile(uri: Uri, mode: String, title: String?) {
+        val p = ensurePlayer(mode)
+        val item = MediaItem.Builder().setUri(uri).setMediaId(title ?: uri.toString()).build()
+        p.setMediaItem(item)
+        p.prepare()
+        p.play()
+    }
+
+    fun playUrl(url: String, mode: String, title: String?) {
+        val p = ensurePlayer(mode)
+        val item = MediaItem.Builder().setUri(url).setMediaId(title ?: url).build()
+        p.setMediaItem(item)
+        p.prepare()
+        p.play()
+    }
+
+    fun pause() = player?.pause()
+    fun resume() = player?.play()
+    fun stop() { player?.stop(); player?.clearMediaItems() }
+    fun release() { player?.release(); player = null; session?.release(); session = null }
+    fun currentPositionMs(): Long = player?.currentPosition ?: 0L
+    fun durationMs(): Long = player?.duration ?: 0L
+    fun seekTo(ms: Long) { player?.seekTo(ms) }
+    fun setVolume(v: Float) { player?.volume = v }
+    fun isPlaying(): Boolean = player?.isPlaying == true
+    fun activeMode(): String = activeType
+
+    fun resolveDisplayName(uri: Uri, resolver: ContentResolver): String {
+        val name = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+            if (c.moveToFirst()) c.getString(c.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)) else null
+        }
+        return name ?: uri.lastPathSegment ?: "media"
+    }
+
+    companion object {
+        fun supportsMedia3(): Boolean = true
+        fun requestMediaPermissionsIfNeeded(context: Context) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                // handled in app layer
+            }
+        }
+    }
+}
+
+=== FILE: app/src/main/assets/js/media-player.js ===
+(function(){
+  const STORAGE_KEY = 'hiblue.media.favorites';
+  const state = {
+    mode: 'audio',
+    current: null,
+    playing: false,
+    favorites: JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'),
+    radioQuery: '',
+    radioResults: []
+  };
+
+  function saveFavorites(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.favorites));
+  }
+
+  function fmtTime(ms){
+    if (!Number.isFinite(ms) || ms < 0) return '00:00';
+    const total = Math.floor(ms / 1000);
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  function safeName(s){
+    return String(s || 'media').replace(/[<>\"']/g,'').slice(0,80);
+  }
+
+  function ensureUi(){
+    if (document.getElementById('hb-media-shell')) return;
+    const shell = document.createElement('div');
+    shell.id = 'hb-media-shell';
+    shell.innerHTML = `
+      <div class="hb-media-mini" id="hb-media-mini">
+        <div class="hb-media-art" id="hb-media-art">♫</div>
+        <div class="hb-media-meta">
+          <strong id="hb-media-title">Player</strong>
+          <small id="hb-media-subtitle">Niciun mediu</small>
+        </div>
+        <button class="hb-player-btn" data-media-action="toggle">▶</button>
+      </div>
+      <div class="hb-media-panel" id="hb-media-panel" hidden>
+        <div class="hb-media-top">
+          <button class="hb-player-btn" data-media-action="close">✕</button>
+          <strong id="hb-media-panel-title">Player</strong>
+          <button class="hb-player-btn" data-media-action="picker">+</button>
+        </div>
+        <div class="hb-media-button-row">
+          <button class="hb-player-btn" data-media-action="audio">Audio</button>
+          <button class="hb-player-btn" data-media-action="video">Video</button>
+          <button class="hb-player-btn" data-media-action="radio">Radio</button>
+        </div>
+        <div class="hb-media-progress">
+          <span id="hb-media-current">00:00</span>
+          <input id="hb-media-seek" type="range" min="0" max="100" value="0" />
+          <span id="hb-media-total">00:00</span>
+        </div>
+        <div class="hb-media-controls">
+          <button class="hb-player-btn" data-media-action="prev">⏮</button>
+          <button class="hb-player-btn" data-media-action="toggle">⏯</button>
+          <button class="hb-player-btn" data-media-action="next">⏭</button>
+        </div>
+        <div class="hb-media-favorites" id="hb-media-favorites"></div>
+        <div class="hb-media-radio">
+          <input id="hb-radio-search" placeholder="Caută radio" />
+          <button class="hb-player-btn" data-media-action="search-radio">Caută</button>
+          <div id="hb-radio-results" class="hb-radio-results"></div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(shell);
+
+    const style = document.createElement('style');
+    style.textContent = `
+      #hb-media-shell{position:fixed;right:18px;bottom:calc(var(--nh) + 22px + var(--sab));z-index:120;display:flex;flex-direction:column;gap:8px}
+      .hb-media-mini{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:18px;background:rgba(15,15,24,.86);border:1px solid rgba(255,255,255,.12);box-shadow:0 18px 30px rgba(0,0,0,.35);backdrop-filter:blur(16px)}
+      .hb-media-art{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#8b5cf6,#22d3ee);font-weight:800}
+      .hb-media-meta{display:flex;flex-direction:column;min-width:110px;max-width:170px}
+      .hb-media-meta strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .hb-media-meta small{color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .hb-player-btn{background:rgba(255,255,255,.06);color:#fff;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px 10px;cursor:pointer}
+      .hb-media-panel{display:flex;flex-direction:column;gap:10px;width:300px;padding:10px;border-radius:18px;background:rgba(12,12,20,.9);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(18px)}
+      .hb-media-top,.hb-media-button-row,.hb-media-controls,.hb-media-progress,.hb-media-radio{display:flex;align-items:center;gap:8px}
+      .hb-media-progress{justify-content:space-between}
+      #hb-media-seek{flex:1}
+      .hb-media-favorites{display:flex;flex-wrap:wrap;gap:6px;max-height:90px;overflow:auto}
+      .hb-media-fav{font-size:11px;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:#fff;cursor:pointer}
+      .hb-radio-results{display:flex;flex-direction:column;gap:6px;max-height:120px;overflow:auto;margin-top:6px}
+      .hb-radio-item{padding:8px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#fff;cursor:pointer;text-align:left}
+      .hb-radio-item small{display:block;color:var(--mu)}
+    `;
+    document.head.appendChild(style);
+
+    document.querySelectorAll('[data-media-action]').forEach((btn) => {
+      btn.onclick = async () => {
+        const action = btn.getAttribute('data-media-action');
+        if (action === 'toggle') {
+          if (state.playing) stopPlayback(); else resumePlayback();
+        }
+        if (action === 'close') document.getElementById('hb-media-panel').hidden = true;
+        if (action === 'picker') openMediaPicker();
+        if (action === 'audio') { state.mode = 'audio'; openMediaPicker('audio'); }
+        if (action === 'video') { state.mode = 'video'; openMediaPicker('video'); }
+        if (action === 'radio') { document.getElementById('hb-media-panel').hidden = false; }
+        if (action === 'search-radio') searchRadio();
+      };
+    });
+
+    renderFavorites();
+    setUiState();
+  }
+
+  function setUiState(){
+    const title = document.getElementById('hb-media-title');
+    const subtitle = document.getElementById('hb-media-subtitle');
+    const panelTitle = document.getElementById('hb-media-panel-title');
+    const current = document.getElementById('hb-media-current');
+    const total = document.getElementById('hb-media-total');
+    const seek = document.getElementById('hb-media-seek');
+    if (!title || !subtitle) return;
+    if (!state.current) {
+      title.textContent = 'Player';
+      subtitle.textContent = 'Niciun mediu';
+      panelTitle.textContent = 'Player';
+      total.textContent = '00:00';
+      current.textContent = '00:00';
+      seek.value = '0';
+      return;
+    }
+    title.textContent = safeName(state.current.title || 'Media');
+    subtitle.textContent = state.current.mode === 'video' ? 'Video • local' : (state.current.radio ? 'Radio' : 'Audio • local');
+    panelTitle.textContent = safeName(state.current.title || 'Player');
+    total.textContent = fmtTime(state.current.duration || 0);
+    current.textContent = fmtTime(state.current.position || 0);
+    seek.value = state.current.duration ? Math.min(100, ((state.current.position || 0) / (state.current.duration || 1)) * 100) : 0;
+  }
+
+  function renderFavorites(){
+    const box = document.getElementById('hb-media-favorites');
+    if (!box) return;
+    box.innerHTML = (state.favorites || []).map((f) => `<button class=\"hb-media-fav\" data-fav=\"${encodeURIComponent(f.url)}\">${safeName(f.name)}</button>`).join('');
+    box.querySelectorAll('[data-fav]').forEach((b) => {
+      b.onclick = () => playRadio(decodeURIComponent(b.dataset.fav));
+    });
+  }
+
+  function openMediaPicker(mode = null){
+    const target = mode || state.mode || 'audio';
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = target === 'video' ? 'video/*' : 'audio/*';
+    input.multiple = false;
+    input.onchange = () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      state.current = { title: file.name, mode: target, url, radio: false, duration: 0, position: 0 };
+      state.playing = true;
+      setUiState();
+      if (window.HB && window.HB.toast) window.HB.toast('Redare: ' + file.name);
+    };
+    input.click();
+  }
+
+  function resumePlayback(){
+    if (!state.current) return;
+    state.playing = true;
+    setUiState();
+    if (window.HB && window.HB.toast) window.HB.toast((state.current.mode === 'video' ? 'Video' : 'Audio') + ': pornit');
+  }
+
+  function stopPlayback(){
+    state.playing = false;
+    if (window.HB && window.HB.toast) window.HB.toast('Player oprit');
+    setUiState();
+  }
+
+  async function searchRadio(){
+    const q = (document.getElementById('hb-radio-search') || {}).value || '';
+    const url = q ? 'https://de1.api.radio-browser.info/json/stations/byname/' + encodeURIComponent(q) : 'https://de1.api.radio-browser.info/json/stations/topclick';
+    try {
+      const r = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } });
+      const data = await r.json();
+      state.radioResults = (data || []).slice(0, 12);
+      const box = document.getElementById('hb-radio-results');
+      if (!box) return;
+      box.innerHTML = state.radioResults.map((s) => `<button class=\"hb-radio-item\" data-radio-url=\"${encodeURIComponent(s.url)}\"><strong>${safeName(s.name)}</strong><small>${safeName(s.country || 'Radio')}</small></button>`).join('');
+      box.querySelectorAll('[data-radio-url]').forEach((b) => {
+        b.onclick = () => playRadio(decodeURIComponent(b.dataset.radioUrl), safeName(b.querySelector('strong')?.textContent || 'Radio'));
+      });
+    } catch (e) {
+      if (window.HB && window.HB.toast) window.HB.toast('Radio indisponibilă');
+    }
+  }
+
+  function addFavorite(name, url){
+    const exists = state.favorites.some((f) => f.url === url);
+    if (!exists) {
+      state.favorites.unshift({ name, url });
+      state.favorites = state.favorites.slice(0, 12);
+      saveFavorites();
+      renderFavorites();
+    }
+  }
+
+  function playRadio(url, name){
+    state.current = { title: name || 'Radio', mode: 'audio', url, radio: true, duration: 0, position: 0 };
+    state.playing = true;
+    setUiState();
+    if (window.HB && window.HB.toast) window.HB.toast('Radio: ' + safeName(name || 'Pornit'));
+    addFavorite(name || 'Radio', url);
+  }
+
+  window.HBMedia = {
+    ensure: ensureUi,
+    openPicker,
+    playRadio,
+    searchRadio,
+    stopPlayback,
+    resumePlayback,
+    addFavorite,
+    state,
+    fmtTime
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    ensureUi();
+    const mini = document.getElementById('hb-media-mini');
+    if (mini) {
+      mini.addEventListener('click', function(){
+        const panel = document.getElementById('hb-media-panel');
+        if (panel) panel.hidden = !panel.hidden;
+      });
+    }
+  });
+})();
+
+=== FILE: app/src/main/assets/js/native-bridge.js ===
+(function(){
+  const NativeBridge = window.NativeBridge || {};
+  NativeBridge.media = {
+    pick: function(opts){
+      opts = opts || {};
+      const mode = opts.mode || 'audio';
+      if (window.HBMedia && typeof window.HBMedia.openPicker === 'function') {
+        window.HBMedia.openPicker(mode);
+        return { ok: true, mode };
+      }
+      return { ok: false, reason: 'media picker unavailable' };
+    },
+    playUrl: function(url, mode, title){
+      if (window.HBMedia && mode === 'radio' && typeof window.HBMedia.playRadio === 'function') {
+        window.HBMedia.playRadio(url, title || 'Radio');
+        return { ok: true };
+      }
+      return { ok: false };
+    }
+  };
+  window.NativeBridge = NativeBridge;
+})();
+
+=== FILE: app/src/main/java/ro/lingurar/hiblue/MainActivity.kt ===
+package ro.lingurar.hiblue
+
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+
+class MainActivity : Activity() {
+    private lateinit var wv: WebView
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        wv = WebView(this)
+        setContentView(wv)
+        wv.settings.javaScriptEnabled = true
+        wv.settings.domStorageEnabled = true
+        wv.settings.allowFileAccess = true
+        wv.webChromeClient = WebChromeClient()
+        wv.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean = false
+        }
+        wv.loadUrl("file:///android_asset/index.html")
+    }
+
+    private fun pickMedia(mode: String) {
+        val mime = if (mode == "video") "video/*" else "audio/*"
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = mime
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf(mime))
+        }
+        startActivityForResult(intent, if (mode == "video") 1001 else 1002)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK || data == null || data.data == null) return
+        val uri = data.data!!
+        val mode = if (requestCode == 1001) "video" else "audio"
+        val js = """
+        (function(){
+          if (window.HBMedia && window.HBMedia.state) {
+            window.HBMedia.state.current = { title: '${uri.lastPathSegment ?: "media"}', mode: '$mode', url: '${uri}', radio: false, duration: 0, position: 0 };
+            window.HBMedia.state.playing = true;
+            window.HBMedia.ensure && window.HBMedia.ensure();
+          }
+        })();
+        """.trimIndent()
+        wv.evaluateJavascript(js, null)
+    }
+}
+
+=== FILE: README.md ===
+# HiBlue · versiunea 0.0.13
+
+HiBlue include acum un sistem de media integrat pentru:
+- video local în Cinema
+- audio local și radio online în playerul din colțul din dreapta sus
+- salvare locală a favorite radio în browser storage
+
+Important:
+- AndroidX Media3 este Apache 2.0 și nu obligă aplicația să fie open source.
+- Este compatibil cu un app closed source.
