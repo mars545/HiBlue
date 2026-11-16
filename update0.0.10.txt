@@ -46,7 +46,7 @@ Nu este necesară modificarea manuală a `hiblue.txt`; workflow-ul existent îl 
 (function () {
   "use strict";
   const G = window.GM;
-  if (!G || !Array.isArray(G.games)) return;
+  if (!G || !G.games || typeof G.games.push !== "function") return;
 
   const SAVE_KEY = "hiblue.myblue.save.v1";
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
@@ -582,8 +582,7 @@ Nu este necesară modificarea manuală a `hiblue.txt`; workflow-ul existent îl 
     };
   }
 
-  // Remove a previous registration defensively if this script is evaluated twice.
-  for (let i=G.games.length-1;i>=0;i--) if(G.games[i] && G.games[i].id === "myblue") G.games.splice(i,1);
+  // În HiBlue 0.0.7+, GM.games este un adaptor compatibil cu push(), nu un Array.
   G.games.push({
     id:"myblue", name:"My Blue", tag:"Companion virtual · grijă · joacă",
     dev:"Lingurar Marius",
