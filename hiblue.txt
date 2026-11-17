@@ -1,0 +1,2626 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b1e3f">
+<title>BLUEHAVEN — Economic Life Simulator</title>
+<style>
+/* ============================================================
+   BLUEHAVEN — GLOBAL DESIGN SYSTEM
+   Premium stylized 3D cartoon look, top-down tilted camera.
+   All values are intentional; no leftover test variables.
+   ============================================================ */
+:root{
+  --sky-day-1:#aee3ff;
+  --sky-day-2:#7fc4f7;
+  --sky-dusk-1:#ffb27a;
+  --sky-dusk-2:#c95d8e;
+  --sky-night-1:#0e1a3a;
+  --sky-night-2:#243b6b;
+  --grass-1:#7ec96b;
+  --grass-2:#5aa651;
+  --grass-rural:#a4c46a;
+  --road:#3a3f4a;
+  --road-line:#f4c542;
+  --water-1:#4ea8d8;
+  --water-2:#2f7fb5;
+  --sand:#e8d59a;
+  --roof-red:#c9474b;
+  --roof-blue:#4a6fa5;
+  --roof-green:#5b9d6e;
+  --roof-grey:#6b7079;
+  --roof-gold:#d4af37;
+  --concrete:#d8dde2;
+  --industrial:#8b94a3;
+  --text:#0d1830;
+  --text-soft:#3c4a66;
+  --panel-bg:rgba(255,255,255,.96);
+  --panel-shadow:0 24px 60px rgba(8,18,40,.45),0 4px 12px rgba(8,18,40,.25);
+  --accent:#1f7ae0;
+  --accent-2:#0a4fa0;
+  --good:#2e9e5b;
+  --bad:#d24545;
+  --warn:#e6a700;
+  --gold:#d4af37;
+  --radius:14px;
+  --radius-sm:8px;
+  --font:'Trebuchet MS','Segoe UI',Roboto,system-ui,sans-serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;font-family:var(--font);color:var(--text);
+  user-select:none;-webkit-user-select:none;}
+body{
+  background:#0b1e3f;
+  font-size:14px;
+  touch-action:manipulation;
+}
+
+/* ============================================================
+   WORLD LAYER — top-down stylized map
+   ============================================================ */
+#stage{
+  position:fixed;inset:0;
+  background:linear-gradient(180deg,var(--sky-day-1),var(--sky-day-2));
+  transition:background 4s ease;
+  overflow:hidden;
+}
+#stage.dusk{background:linear-gradient(180deg,var(--sky-dusk-1),var(--sky-dusk-2));}
+#stage.night{background:linear-gradient(180deg,var(--sky-night-1),var(--sky-night-2));}
+#stage::before{ /* sun/moon */
+  content:"";position:absolute;top:8%;right:10%;
+  width:80px;height:80px;border-radius:50%;
+  background:radial-gradient(circle at 30% 30%,#fff6c8,#ffd24a);
+  box-shadow:0 0 60px rgba(255,210,74,.55);
+  transition:transform 4s ease,background 4s ease;
+}
+#stage.dusk::before{background:radial-gradient(circle at 30% 30%,#ffe1a8,#ff7a3a);box-shadow:0 0 80px rgba(255,120,60,.6);}
+#stage.night::before{background:radial-gradient(circle at 30% 30%,#f4f6ff,#aab8d8);box-shadow:0 0 40px rgba(170,184,216,.5);}
+
+#world{
+  position:absolute;left:50%;top:50%;
+  width:2400px;height:1800px;
+  transform:translate(-50%,-50%) perspective(2200px) rotateX(42deg) scale(.55);
+  transform-origin:center center;
+  transition:transform .4s ease;
+  background:
+    radial-gradient(ellipse at 20% 30%,rgba(255,255,255,.25),transparent 40%),
+    radial-gradient(ellipse at 80% 70%,rgba(255,255,255,.18),transparent 45%),
+    linear-gradient(180deg,var(--grass-1),var(--grass-2));
+  border-radius:30px;
+  box-shadow:inset 0 0 120px rgba(0,0,0,.18),0 30px 80px rgba(0,0,0,.5);
+}
+/* tilt less on portrait mobile */
+@media (max-aspect-ratio:1/1){
+  #world{transform:translate(-50%,-50%) perspective(2600px) rotateX(30deg) scale(.42);}
+}
+
+/* Region tiles */
+.region{
+  position:absolute;border-radius:18px;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.15),inset 0 0 40px rgba(0,0,0,.12);
+  overflow:hidden;
+}
+.region-label{
+  position:absolute;top:8px;left:12px;z-index:5;
+  font-size:13px;font-weight:800;letter-spacing:.5px;
+  text-transform:uppercase;color:#fff;
+  text-shadow:0 2px 4px rgba(0,0,0,.65);
+  pointer-events:none;
+}
+.region-label small{display:block;font-size:10px;font-weight:600;opacity:.85;text-transform:none;letter-spacing:0;}
+
+/* District positions (in 2400x1800 canvas) */
+.r-bluehaven{left:520px;top:200px;width:1300px;height:980px;
+  background:linear-gradient(135deg,#cfd8e6,#9aa9bf);}
+.r-westport{left:1880px;top:760px;width:480px;height:780px;
+  background:linear-gradient(135deg,#8b94a3,#5d6675);}
+.r-pinecrest{left:80px;top:1080px;width:560px;height:560px;
+  background:linear-gradient(135deg,#b6d49a,#8fbb6e);}
+.r-littlebriar{left:660px;top:1240px;width:560px;height:460px;
+  background:linear-gradient(135deg,#c9d99a,#a4c46a);}
+.r-greenfield{left:1280px;top:1180px;width:540px;height:520px;
+  background:linear-gradient(135deg,#a7d068,#7ab04a);}
+.r-silverlake{left:1880px;top:60px;width:480px;height:620px;
+  background:linear-gradient(135deg,#7fc0db,#4ea8d8);}
+
+/* Decorative roads */
+.road{
+  position:absolute;background:var(--road);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
+}
+.road::after{
+  content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,transparent 0 18px,var(--road-line) 18px 30px);
+  opacity:.45;
+}
+.road.v{width:22px;height:100%;}
+.road.v::after{background:repeating-linear-gradient(0deg,transparent 0 18px,var(--road-line) 18px 30px);}
+.road.h{width:100%;height:22px;}
+
+/* River through Silverlake */
+.river{
+  position:absolute;
+  background:linear-gradient(135deg,var(--water-1),var(--water-2));
+  box-shadow:inset 0 0 12px rgba(0,0,0,.18);
+}
+.lake{
+  position:absolute;left:1980px;top:200px;width:280px;height:280px;border-radius:50% 50% 48% 52% / 50% 48% 52% 50%;
+  background:radial-gradient(circle at 35% 30%,#8fd0ef,var(--water-1) 55%,var(--water-2));
+  box-shadow:inset 0 0 30px rgba(0,0,0,.2),0 0 0 6px rgba(255,255,255,.08);
+  animation:lakeWave 8s ease-in-out infinite alternate;
+}
+@keyframes lakeWave{
+  0%{border-radius:50% 50% 48% 52% / 50% 48% 52% 50%;}
+  100%{border-radius:48% 52% 50% 50% / 52% 50% 48% 50%;}
+}
+
+/* Trees decoration */
+.tree{
+  position:absolute;width:18px;height:18px;border-radius:50% 50% 45% 45%;
+  background:radial-gradient(circle at 35% 30%,#7bbf5a,#2f7d3a);
+  box-shadow:0 4px 4px rgba(0,0,0,.18);
+}
+
+/* ============================================================
+   BUILDINGS — clickable stylized 3D boxes
+   ============================================================ */
+.building{
+  position:absolute;
+  border-radius:6px 6px 3px 3px;
+  cursor:pointer;
+  transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
+  box-shadow:0 6px 0 rgba(0,0,0,.18), 0 10px 18px rgba(0,0,0,.25);
+}
+.building .roof{
+  position:absolute;left:0;right:0;top:0;height:32%;
+  border-radius:6px 6px 2px 2px;
+  background:var(--roof-red);
+}
+.building .body{
+  position:absolute;left:0;right:0;bottom:0;top:32%;
+  background:linear-gradient(180deg,#e8eef5,#c4cfdc);
+  border-radius:0 0 3px 3px;
+}
+.building .ico{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:14px;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.4);
+}
+.building:hover{transform:translateY(-3px);filter:brightness(1.07);}
+.building:active{transform:translateY(-1px) scale(.98);}
+.building.owned{outline:3px solid var(--gold);outline-offset:2px;}
+.building.selected{outline:3px solid var(--accent);outline-offset:3px;animation:pulse 1.2s ease infinite;}
+.building.special{outline:2px dashed var(--gold);outline-offset:2px;animation:glow 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{outline-color:var(--accent);}50%{outline-color:#5fb0ff;}}
+@keyframes glow{0%,100%{filter:drop-shadow(0 0 4px var(--gold));}50%{filter:drop-shadow(0 0 12px var(--gold));}}
+
+/* Building size variants */
+.b-sm{width:40px;height:54px;}
+.b-md{width:54px;height:72px;}
+.b-lg{width:72px;height:96px;}
+.b-xl{width:96px;height:120px;}
+
+/* Roof colors per type */
+.t-res .roof{background:var(--roof-red);}
+.t-prem .roof{background:var(--roof-gold);}
+.t-comm .roof{background:var(--roof-blue);}
+.t-ind .roof{background:var(--roof-grey);}
+.t-civic .roof{background:var(--roof-green);}
+.t-land{background:repeating-linear-gradient(45deg,#bda06a,#bda06a 6px,#a88d57 6px 12px);box-shadow:none;border:2px dashed #6b5a37;}
+.t-land .roof,.t-land .body{display:none;}
+.t-land .ico{font-size:11px;color:#fff;}
+
+/* ============================================================
+   HUD — top bar with player stats
+   ============================================================ */
+#hud{
+  position:fixed;top:0;left:0;right:0;z-index:30;
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;
+  background:linear-gradient(180deg,rgba(8,18,40,.92),rgba(8,18,40,.78));
+  backdrop-filter:blur(14px);
+  color:#fff;
+  box-shadow:0 4px 20px rgba(0,0,0,.35);
+}
+#hud .logo{
+  font-weight:900;letter-spacing:2px;font-size:18px;
+  background:linear-gradient(90deg,#5fb0ff,#fff,#d4af37);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  padding-right:12px;border-right:1px solid rgba(255,255,255,.18);
+}
+#hud .stat{
+  display:flex;flex-direction:column;align-items:flex-start;
+  padding:4px 10px;border-radius:8px;
+  background:rgba(255,255,255,.07);min-width:80px;
+}
+#hud .stat .lbl{font-size:9px;opacity:.7;text-transform:uppercase;letter-spacing:1px;}
+#hud .stat .val{font-size:14px;font-weight:800;}
+#hud .stat.money .val{color:#7ddc8a;}
+#hud .stat.bank .val{color:#9fd0ff;}
+#hud .stat.debt .val{color:#ff9d8a;}
+#hud .stat.day .val{color:#ffd966;}
+#hud .stat.time .val{color:#fff;}
+#hud .season{margin-left:auto;display:flex;gap:6px;}
+#hud .season .ico{font-size:18px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));}
+
+#hud .actions{display:flex;gap:6px;}
+.btn-icon{
+  width:36px;height:36px;border:none;border-radius:8px;
+  background:rgba(255,255,255,.1);color:#fff;cursor:pointer;
+  font-size:16px;display:flex;align-items:center;justify-content:center;
+  transition:background .15s, transform .1s;
+}
+.btn-icon:hover{background:rgba(255,255,255,.22);}
+.btn-icon:active{transform:scale(.92);}
+
+/* ============================================================
+   SIDE MENU — primary navigation
+   ============================================================ */
+#menu{
+  position:fixed;left:14px;top:80px;z-index:25;
+  display:flex;flex-direction:column;gap:8px;
+}
+.menu-btn{
+  width:56px;height:56px;border:none;border-radius:14px;
+  background:rgba(255,255,255,.96);color:var(--accent-2);
+  font-size:22px;cursor:pointer;
+  box-shadow:0 8px 20px rgba(8,18,40,.3);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .15s, background .15s;
+  position:relative;
+}
+.menu-btn:hover{transform:translateY(-2px);}
+.menu-btn:active{transform:scale(.95);}
+.menu-btn.active{background:var(--accent);color:#fff;}
+.menu-btn .tip{
+  position:absolute;left:64px;top:50%;transform:translateY(-50%);
+  background:rgba(8,18,40,.92);color:#fff;padding:5px 10px;border-radius:6px;
+  font-size:11px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;
+}
+.menu-btn:hover .tip{opacity:1;}
+.menu-btn .badge{
+  position:absolute;top:-4px;right:-4px;
+  background:var(--bad);color:#fff;font-size:9px;font-weight:800;
+  min-width:18px;height:18px;border-radius:9px;padding:0 4px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 4px rgba(0,0,0,.3);
+}
+
+/* ============================================================
+   PANELS — full-screen overlays
+   ============================================================ */
+.panel{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.95);
+  z-index:40;width:min(680px,94vw);max-height:88vh;
+  background:var(--panel-bg);color:var(--text);
+  border-radius:var(--radius);
+  box-shadow:var(--panel-shadow);
+  border:1px solid rgba(255,255,255,.6);
+  display:none;flex-direction:column;
+  opacity:0;transition:opacity .2s, transform .2s;
+  overflow:hidden;
+}
+.panel.open{display:flex;opacity:1;transform:translate(-50%,-50%) scale(1);}
+.panel-head{
+  padding:14px 18px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;
+  display:flex;align-items:center;gap:12px;
+}
+.panel-head .ph-ico{font-size:24px;}
+.panel-head h2{font-size:18px;font-weight:800;letter-spacing:.5px;flex:1;}
+.panel-head .close{
+  width:34px;height:34px;border-radius:8px;border:none;background:rgba(255,255,255,.2);
+  color:#fff;cursor:pointer;font-size:18px;font-weight:700;
+}
+.panel-head .close:hover{background:rgba(255,255,255,.35);}
+.panel-body{padding:18px;overflow-y:auto;flex:1;}
+.panel-body::-webkit-scrollbar{width:8px;}
+.panel-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:4px;}
+
+.section-title{
+  font-size:11px;text-transform:uppercase;letter-spacing:1.5px;
+  color:var(--text-soft);font-weight:800;margin:16px 0 8px;
+}
+.section-title:first-child{margin-top:0;}
+
+.kv{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:13px;}
+.kv .k{color:var(--text-soft);}
+.kv .v{font-weight:700;text-align:right;}
+.kv .v.good{color:var(--good);}
+.kv .v.bad{color:var(--bad);}
+.kv .v.warn{color:var(--warn);}
+
+/* Buttons */
+.btn{
+  border:none;border-radius:var(--radius-sm);padding:10px 16px;
+  font-family:var(--font);font-size:13px;font-weight:800;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  transition:transform .12s, filter .15s, background .15s;
+  text-transform:uppercase;letter-spacing:.5px;
+}
+.btn:active{transform:scale(.96);}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 4px 10px rgba(15,90,180,.35);}
+.btn-primary:hover{filter:brightness(1.08);}
+.btn-good{background:linear-gradient(135deg,#3eb871,#2a8d54);color:#fff;}
+.btn-warn{background:linear-gradient(135deg,#f5b643,#d68a14);color:#fff;}
+.btn-bad{background:linear-gradient(135deg,#e76b6b,#b53b3b);color:#fff;}
+.btn-ghost{background:#eef1f6;color:var(--text-soft);}
+.btn-ghost:hover{background:#e2e6ee;}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.6);}
+
+.btn-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+
+/* Cards list */
+.cards{display:grid;grid-template-columns:1fr;gap:8px;}
+.card{
+  display:flex;gap:12px;padding:12px;border-radius:var(--radius-sm);
+  background:#f4f7fb;border:1px solid #e3e8ef;
+  align-items:center;
+  transition:background .15s, transform .12s;
+}
+.card:hover{background:#eaf0f7;}
+.card .c-ico{font-size:24px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;
+  background:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,.08);}
+.card .c-body{flex:1;}
+.card .c-title{font-weight:800;font-size:14px;}
+.card .c-sub{font-size:11px;color:var(--text-soft);margin-top:2px;}
+.card .c-act{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+.card .price{font-weight:800;color:var(--accent-2);font-size:13px;}
+
+/* Tabs */
+.tabs{display:flex;gap:6px;margin-bottom:12px;border-bottom:2px solid #e3e8ef;}
+.tab{
+  padding:8px 14px;border:none;background:none;cursor:pointer;
+  font-family:var(--font);font-size:12px;font-weight:800;color:var(--text-soft);
+  border-bottom:2px solid transparent;margin-bottom:-2px;text-transform:uppercase;letter-spacing:.5px;
+}
+.tab.active{color:var(--accent-2);border-bottom-color:var(--accent);}
+.tab:hover:not(.active){color:var(--accent);}
+
+/* Toast */
+#toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  z-index:60;padding:12px 18px;border-radius:10px;
+  background:rgba(8,18,40,.95);color:#fff;font-size:13px;font-weight:700;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;pointer-events:none;
+  transition:opacity .25s, transform .25s;
+  max-width:90vw;text-align:center;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.good{background:linear-gradient(135deg,#2a8d54,#1d6539);}
+#toast.bad{background:linear-gradient(135deg,#b53b3b,#8a2727);}
+#toast.warn{background:linear-gradient(135deg,#d68a14,#a9690a);}
+
+/* Time controls */
+#time-ctl{
+  position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+  z-index:25;display:flex;gap:6px;
+  background:rgba(8,18,40,.92);padding:6px;border-radius:10px;
+  box-shadow:0 4px 16px rgba(0,0,0,.3);
+}
+#time-ctl button{
+  width:38px;height:34px;border:none;border-radius:6px;cursor:pointer;
+  background:rgba(255,255,255,.1);color:#fff;font-size:14px;font-weight:700;
+}
+#time-ctl button:hover{background:rgba(255,255,255,.22);}
+#time-ctl button.active{background:var(--accent);}
+
+/* Notification log */
+#news{
+  position:fixed;right:14px;top:80px;z-index:24;
+  width:280px;max-height:60vh;overflow-y:auto;
+  display:flex;flex-direction:column;gap:6px;
+  pointer-events:none;
+}
+.note{
+  background:rgba(8,18,40,.88);color:#fff;
+  padding:8px 12px;border-radius:8px;font-size:12px;
+  border-left:3px solid var(--accent);
+  box-shadow:0 4px 10px rgba(0,0,0,.3);
+  animation:slideIn .3s ease, fadeOut .4s ease 9s forwards;
+  pointer-events:auto;
+}
+.note.good{border-left-color:var(--good);}
+.note.bad{border-left-color:var(--bad);}
+.note.warn{border-left-color:var(--warn);}
+@keyframes slideIn{from{transform:translateX(40px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+@keyframes fadeOut{to{opacity:0;transform:translateX(40px);}}
+
+/* Splash / loader */
+#splash{
+  position:fixed;inset:0;z-index:100;
+  background:radial-gradient(ellipse at center,#1a3a7a 0%,#0b1e3f 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:#fff;gap:24px;
+  transition:opacity .6s ease;
+}
+#splash.hide{opacity:0;pointer-events:none;}
+#splash .title{
+  font-size:64px;font-weight:900;letter-spacing:8px;
+  background:linear-gradient(90deg,#5fb0ff,#fff,#d4af37);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 4px 20px rgba(95,176,255,.4);
+  animation:glowTitle 2.4s ease-in-out infinite alternate;
+}
+@keyframes glowTitle{
+  from{filter:drop-shadow(0 0 10px rgba(95,176,255,.5));}
+  to{filter:drop-shadow(0 0 28px rgba(212,175,55,.65));}
+}
+#splash .sub{font-size:14px;letter-spacing:3px;opacity:.7;text-transform:uppercase;}
+#splash .loader{
+  width:200px;height:6px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;
+}
+#splash .loader div{height:100%;width:0;background:linear-gradient(90deg,#5fb0ff,#d4af37);transition:width .3s ease;}
+#splash .start{
+  margin-top:12px;padding:14px 36px;border:none;border-radius:10px;
+  background:linear-gradient(135deg,#d4af37,#a8862a);color:#fff;
+  font-size:16px;font-weight:900;letter-spacing:2px;cursor:pointer;
+  box-shadow:0 6px 20px rgba(212,175,55,.5);
+  display:none;
+}
+#splash .start.show{display:block;animation:btnIn .5s ease;}
+@keyframes btnIn{from{transform:scale(.85);opacity:0;}to{transform:scale(1);opacity:1;}}
+
+/* World pan/zoom hint */
+#hint{
+  position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:20;
+  background:rgba(8,18,40,.85);color:#fff;padding:6px 14px;border-radius:20px;
+  font-size:11px;letter-spacing:.5px;opacity:.85;pointer-events:none;
+}
+
+/* Mobile-friendly: shrink HUD on narrow */
+@media (max-width:640px){
+  #hud .stat{min-width:64px;padding:4px 6px;}
+  #hud .stat .val{font-size:12px;}
+  #hud .logo{font-size:14px;padding-right:8px;}
+  #news{display:none;}
+  #menu{left:8px;top:72px;}
+  .menu-btn{width:48px;height:48px;font-size:18px;}
+}
+
+/* Range input for rent / salary */
+input[type="range"]{width:100%;accent-color:var(--accent);height:6px;}
+input[type="text"],input[type="number"],select{
+  width:100%;padding:8px 10px;border:1px solid #cdd5e0;border-radius:8px;
+  font-family:var(--font);font-size:13px;background:#fff;color:var(--text);
+}
+input[type="text"]:focus,input[type="number"]:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px;}
+
+/* Tooltip on building selection */
+.b-info{
+  font-size:11px;color:var(--text-soft);background:#f4f7fb;padding:6px 8px;border-radius:6px;margin-top:6px;
+  border-left:3px solid var(--accent);
+}
+
+/* Empty state */
+.empty{text-align:center;padding:30px 10px;color:var(--text-soft);font-size:12px;}
+.empty .em-ico{font-size:36px;margin-bottom:8px;opacity:.5;}
+
+/* Progress bar */
+.bar{height:6px;border-radius:3px;background:#e3e8ef;overflow:hidden;margin-top:4px;}
+.bar > div{height:100%;background:linear-gradient(90deg,var(--accent),#5fb0ff);transition:width .4s ease;}
+.bar.good > div{background:linear-gradient(90deg,#2a8d54,#3eb871);}
+.bar.warn > div{background:linear-gradient(90deg,#d68a14,#f5b643);}
+.bar.bad > div{background:linear-gradient(90deg,#b53b3b,#e76b6b);}
+</style>
+</head>
+<body>
+
+<!-- Splash -->
+<div id="splash">
+  <div class="title">BLUEHAVEN</div>
+  <div class="sub">Economic Life Simulator</div>
+  <div class="loader"><div id="ldr"></div></div>
+  <button class="start" id="startBtn">INTRĂ ÎN ORAȘ</button>
+</div>
+
+<!-- Game stage -->
+<div id="stage">
+  <div id="world"></div>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="logo">BLUEHAVEN</div>
+  <div class="stat money"><span class="lbl">Numerar</span><span class="val" id="hud-cash">€5.000</span></div>
+  <div class="stat bank"><span class="lbl">Bancă</span><span class="val" id="hud-bank">€0</span></div>
+  <div class="stat debt"><span class="lbl">Datorii</span><span class="val" id="hud-debt">€0</span></div>
+  <div class="stat day"><span class="lbl">Ziua</span><span class="val" id="hud-day">1</span></div>
+  <div class="stat time"><span class="lbl">Ora</span><span class="val" id="hud-time">08:00</span></div>
+  <div class="season">
+    <span class="ico" id="hud-season" title="Anotimp">Primăvară</span>
+  </div>
+  <div class="actions">
+    <button class="btn-icon" id="btnNotif" title="Notificări">🔔<span class="badge" id="notifBadge" style="display:none">0</span></button>
+    <button class="btn-icon" id="btnSave" title="Salvează">💾</button>
+    <button class="btn-icon" id="btnSettings" title="Setări">⚙️</button>
+  </div>
+</div>
+
+<!-- Hint -->
+<div id="hint">Glisează pentru a explora harta · Apasă pe clădiri pentru interacțiune</div>
+
+<!-- Side menu -->
+<div id="menu">
+  <button class="menu-btn active" data-panel="world" title="Hartă">🗺️<span class="tip">Hartă lume</span></button>
+  <button class="menu-btn" data-panel="properties" title="Proprietăți">🏠<span class="tip">Proprietățile mele</span></button>
+  <button class="menu-btn" data-panel="job" title="Muncă">💼<span class="tip">Carieră & Joburi</span></button>
+  <button class="menu-btn" data-panel="business" title="Afaceri">🏬<span class="tip">Afacerile mele</span></button>
+  <button class="menu-btn" data-panel="market" title="Piață">🛒<span class="tip">Magazine & Prețuri</span></button>
+  <button class="menu-btn" data-panel="bank" title="Bancă">🏦<span class="tip">Finanțe & Credit</span></button>
+  <button class="menu-btn" data-panel="report" title="Raport">📊<span class="tip">Raport economic</span></button>
+</div>
+
+<!-- News -->
+<div id="news"></div>
+
+<!-- Time controls -->
+<div id="time-ctl">
+  <button id="t-pause" title="Pauză">⏸</button>
+  <button id="t-play" class="active" title="Normal">▶</button>
+  <button id="t-ff" title="Accelerat">⏩</button>
+  <button id="t-sleep" title="Dormi până a doua zi">🌙</button>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Generic Panel -->
+<div class="panel" id="panel">
+  <div class="panel-head">
+    <div class="ph-ico" id="ph-ico">🏢</div>
+    <h2 id="ph-title">Panel</h2>
+    <button class="close" id="ph-close">×</button>
+  </div>
+  <div class="panel-body" id="ph-body"></div>
+</div>
+
+<script>
+/* ============================================================
+   BLUEHAVEN — GAME ENGINE
+   Single-file economic simulator.
+   Author: BLUEHAVEN Dev Team · Version 0.0.1
+   ============================================================ */
+'use strict';
+
+/* ---------- Utility helpers ---------- */
+const $  = (s,root=document)=>root.querySelector(s);
+const $$ = (s,root=document)=>Array.from(root.querySelectorAll(s));
+const fmt = n => '€'+Math.round(n).toLocaleString('ro-RO');
+const fmtK = n => {
+  n=Math.round(n);
+  if(Math.abs(n)>=1000000) return '€'+(n/1000000).toFixed(2)+'M';
+  if(Math.abs(n)>=1000) return '€'+(n/1000).toFixed(1)+'k';
+  return '€'+n;
+};
+const fmtTime = h => {
+  const hh=String(Math.floor(h)).padStart(2,'0');
+  return hh+':00';
+};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const rndi=(a,b)=>Math.floor(rnd(a,b+1));
+const pick=arr=>arr[rndi(0,arr.length-1)];
+const uid=(()=>{let i=0;return p=>p+'_'+(++i);})();
+
+function toast(msg,type=''){
+  const t=$('#toast');
+  t.className=type;
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+function news(msg,type=''){
+  const wrap=$('#news');
+  const el=document.createElement('div');
+  el.className='note '+type;
+  el.textContent=msg;
+  wrap.appendChild(el);
+  setTimeout(()=>el.remove(),10000);
+  while(wrap.children.length>6) wrap.firstChild.remove();
+}
+
+/* ---------- Static data: districts, regions, building catalog ---------- */
+const REGIONS = [
+  {id:'bluehaven',name:'Bluehaven City',sub:'Metropolă · 11 districte',cls:'r-bluehaven'},
+  {id:'westport',name:'Westport',sub:'Cartier industrial',cls:'r-westport'},
+  {id:'pinecrest',name:'Pinecrest',sub:'Zonă suburbană',cls:'r-pinecrest'},
+  {id:'littlebriar',name:'Little Briar',sub:'Localitate rurală',cls:'r-littlebriar'},
+  {id:'greenfield',name:'Greenfield Farms',sub:'Regiune agricolă',cls:'r-greenfield'},
+  {id:'silverlake',name:'Silverlake',sub:'Zonă naturală & turistică',cls:'r-silverlake'},
+];
+
+/* Housing catalog from spec section 4.1 */
+const HOUSING = [
+  {type:'Garsonieră',     price:35000,  rent:280,  capacity:1, region:'bluehaven'},
+  {type:'Apartament mic', price:65000,  rent:430,  capacity:2, region:'bluehaven'},
+  {type:'Apartament mediu',price:95000, rent:620,  capacity:3, region:'bluehaven'},
+  {type:'Apartament premium',price:160000,rent:1100,capacity:3,region:'bluehaven'},
+  {type:'Casă rurală',    price:55000,  rent:380,  capacity:4, region:'littlebriar'},
+  {type:'Casă suburbană', price:135000, rent:880,  capacity:4, region:'pinecrest'},
+  {type:'Vilă',           price:350000, rent:1900, capacity:5, region:'pinecrest'},
+  {type:'Vilă de lux',    price:850000, rent:4200, capacity:6, region:'silverlake'},
+];
+
+/* Land catalog from spec 4.2 (€/mp) */
+const LAND_TYPES=[
+  {type:'Extravilan agricol',  pmin:3,  pmax:12,  zone:'Agricol',  region:'greenfield'},
+  {type:'Intravilan rural',    pmin:15, pmax:45,  zone:'Rezidențial',region:'littlebriar'},
+  {type:'Intravilan suburban', pmin:50, pmax:120, zone:'Rezidențial',region:'pinecrest'},
+  {type:'Intravilan urban',    pmin:120,pmax:350, zone:'Rezidențial',region:'bluehaven'},
+  {type:'Teren comercial',     pmin:150,pmax:500, zone:'Comercial', region:'bluehaven'},
+  {type:'Teren industrial',    pmin:35, pmax:100, zone:'Industrial',region:'westport'},
+];
+
+/* Jobs catalog from spec 5.1 (gross monthly salary range) */
+const JOBS=[
+  {domain:'Retail',       title:'Casier',         min:1600,max:2000,exp:0,    edu:'Niciuna'},
+  {domain:'Retail',       title:'Vânzător',       min:1700,max:2100,exp:0,    edu:'Niciuna'},
+  {domain:'Restaurante',  title:'Ospătar',         min:1700,max:2200,exp:0,    edu:'Niciuna'},
+  {domain:'Restaurante',  title:'Bucătar',         min:2000,max:2500,exp:6,    edu:'Calificare'},
+  {domain:'Logistică',    title:'Manipulant',      min:1800,max:2200,exp:0,    edu:'Niciuna'},
+  {domain:'Logistică',    title:'Șofer logistic',   min:2200,max:2700,exp:3,    edu:'Permis'},
+  {domain:'Agricultură',  title:'Muncitor agricol', min:1500,max:2100,exp:0,    edu:'Niciuna'},
+  {domain:'Construcții',  title:'Muncitor',         min:2000,max:2500,exp:0,    edu:'Niciuna'},
+  {domain:'Construcții',  title:'Electrician',     min:2500,max:3000,exp:6,    edu:'Calificare'},
+  {domain:'Industrie',    title:'Operator linie',  min:2000,max:2700,exp:3,    edu:'Calificare'},
+  {domain:'Industrie',    title:'Tehnician',       min:2600,max:3200,exp:12,   edu:'Tehnic'},
+  {domain:'Transport',    title:'Șofer profesionist',min:2200,max:3000,exp:3,  edu:'Permis'},
+  {domain:'Transport',    title:'Transport internațional',min:3000,max:3500,exp:18,edu:'Permis'},
+  {domain:'Medicină',     title:'Asistent medical', min:2400,max:3200,exp:6,   edu:'Medical'},
+  {domain:'Medicină',     title:'Medic',            min:4200,max:5500,exp:36,  edu:'Universitar'},
+  {domain:'Educație',     title:'Profesor',         min:2000,max:2500,exp:6,   edu:'Universitar'},
+  {domain:'Educație',     title:'Director școală', min:2700,max:3000,exp:36,  edu:'Universitar'},
+  {domain:'Administrație',title:'Funcționar',       min:2000,max:2400,exp:0,   edu:'Liceu'},
+  {domain:'Administrație',title:'Funcționar șef',   min:2600,max:3200,exp:18,  edu:'Universitar'},
+  {domain:'IT',           title:'Programator junior',min:3000,max:4000,exp:0,  edu:'Universitar'},
+  {domain:'IT',           title:'Programator senior',min:4200,max:5500,exp:24, edu:'Universitar'},
+  {domain:'IT',           title:'Specialist securitate',min:4800,max:6000,exp:36,edu:'Universitar'},
+  {domain:'Management',   title:'Manager departament',min:3500,max:5000,exp:24,edu:'Universitar'},
+  {domain:'Management',   title:'Manager general', min:5000,max:7000,exp:60,  edu:'MBA'},
+];
+
+/* Business catalog from spec 7.1-7.5 */
+const BUSINESSES=[
+  {type:'Cafenea mică',          invest:35000,   dailyIncome:[150,320],   staff:2, cat:'Restaurante'},
+  {type:'Magazin de cartier',    invest:45000,   dailyIncome:[180,400],   staff:2, cat:'Comerț'},
+  {type:'Brutărie',              invest:65000,   dailyIncome:[260,560],   staff:3, cat:'Restaurante'},
+  {type:'Fast-food',             invest:80000,   dailyIncome:[320,720],   staff:4, cat:'Restaurante'},
+  {type:'Service auto',          invest:110000,  dailyIncome:[400,950],   staff:3, cat:'Servicii'},
+  {type:'Restaurant',            invest:150000,  dailyIncome:[520,1200],  staff:6, cat:'Restaurante'},
+  {type:'Magazin de haine',      invest:120000,  dailyIncome:[300,780],   staff:3, cat:'Comerț'},
+  {type:'Farmacie',              invest:140000,  dailyIncome:[400,900],   staff:4, cat:'Comerț'},
+  {type:'Magazin de electronice',invest:200000,  dailyIncome:[400,1100],  staff:4, cat:'Comerț'},
+  {type:'Supermarket',           invest:350000,  dailyIncome:[900,2100],  staff:8, cat:'Comerț'},
+  {type:'Benzinărie',            invest:500000,  dailyIncome:[1200,2800], staff:5, cat:'Comerț'},
+  {type:'Hotel mic',             invest:750000,  dailyIncome:[1800,4200], staff:10,cat:'Servicii'},
+  {type:'Fabrică de mobilă',      invest:900000,  dailyIncome:[2200,5100], staff:14,cat:'Industrial'},
+  {type:'Fabrică alimentară',    invest:1200000, dailyIncome:[2900,6800], staff:18,cat:'Industrial'},
+  {type:'Fabrică medie',         invest:2500000, dailyIncome:[6000,14000],staff:30,cat:'Industrial'},
+  {type:'Centru logistic',       invest:3500000, dailyIncome:[8500,20000],staff:35,cat:'Industrial'},
+];
+
+/* Shop products from spec 6 */
+const PRODUCTS=[
+  {name:'Pâine',           base:2.00, cat:'Alimentare'},
+  {name:'Lapte',           base:1.50, cat:'Alimentare'},
+  {name:'Ouă',             base:3.00, cat:'Alimentare'},
+  {name:'Cartofi/kg',      base:1.50, cat:'Alimentare'},
+  {name:'Carne/kg',        base:8.00, cat:'Alimentare'},
+  {name:'Cafea',           base:3.00, cat:'Alimentare'},
+  {name:'Tricou',          base:15.00,cat:'Haine'},
+  {name:'Geacă',           base:65.00,cat:'Haine'},
+  {name:'Telefon',         base:350,  cat:'Electronice'},
+  {name:'Laptop',          base:800,  cat:'Electronice'},
+  {name:'Mobilier de bază',base:500,  cat:'Mobilă'},
+  {name:'Materiale construcții',base:380,cat:'Construcții'},
+  {name:'Combustibil/L',   base:1.65, cat:'Combustibil'},
+  {name:'Piese auto',      base:120,  cat:'Auto'},
+  {name:'Medicamente',     base:18,   cat:'Farmacie'},
+  {name:'Carte',           base:35,   cat:'Librărie'},
+];
+
+/* Special developable plots — 8 per spec section 2.7 */
+const SPECIAL_PLOTS=[
+  {id:'sp1', name:'Teren Tower Hill',  region:'bluehaven', area:1200, zone:'Comercial',  price:380000},
+  {id:'sp2', name:'Teren Riverside',   region:'bluehaven', area:900,  zone:'Rezidențial',price:240000},
+  {id:'sp3', name:'Teren West Dock',   region:'westport',  area:2400, zone:'Industrial', price:180000},
+  {id:'sp4', name:'Teren Pine Slope',  region:'pinecrest', area:1600, zone:'Rezidențial',price:160000},
+  {id:'sp5', name:'Teren Briar Field',  region:'littlebriar',area:3000,zone:'Agricol',   price:90000},
+  {id:'sp6', name:'Teren Green Acres', region:'greenfield',area:5000, zone:'Agricol',   price:120000},
+  {id:'sp7', name:'Teren Lake View',   region:'silverlake',area:700,  zone:'Rezidențial',price:280000},
+  {id:'sp8', name:'Teren Tourist Bay', region:'silverlake',area:1100, zone:'Comercial', price:330000},
+];
+
+/* ---------- World map building layout (positions in 2400x1800 canvas) ---------- */
+const WORLD_BUILDINGS=[
+  // Bluehaven City - civic
+  {id:'b-cityhall', name:'Primăria Bluehaven', type:'civic',  cat:'Civic',  region:'bluehaven', x:1080,y:540, size:'b-xl', icon:'🏛️', price:0, owner:'Stat',   income:0,    expenses:0},
+  {id:'b-bank',     name:'Banca Centrală',      type:'civic',  cat:'Civic',  region:'bluehaven', x:880, y:540, size:'b-lg', icon:'🏦', price:0, owner:'Stat',   income:0,    expenses:0},
+  {id:'b-univ',     name:'Universitatea Bluehaven',type:'civic',cat:'Civic',  region:'bluehaven', x:1280,y:540, size:'b-xl', icon:'🎓', price:0, owner:'Stat',   income:0,    expenses:0},
+  {id:'b-hospital', name:'Spitalul Metropolitan', type:'civic',cat:'Medical',region:'bluehaven', x:780, y:760, size:'b-xl', icon:'🏥', price:0, owner:'Stat',   income:0,    expenses:0},
+  {id:'b-police',   name:'Poliția Bluehaven',    type:'civic',  cat:'Civic',  region:'bluehaven', x:1180,y:780, size:'b-lg', icon:'🚓', price:0, owner:'Stat',   income:0,    expenses:0},
+  {id:'b-fire',     name:'Pompierii Bluehaven',   type:'civic',  cat:'Civic',  region:'bluehaven', x:1380,y:780, size:'b-lg', icon:'🚒', price:0, owner:'Stat',   income:0,    expenses:0},
+  {id:'b-school',   name:'Liceul Central',        type:'civic',  cat:'Civic',  region:'bluehaven', x:680, y:660, size:'b-lg', icon:'🏫', price:0, owner:'Stat',   income:0,    expenses:0},
+  {id:'b-train',    name:'Gara Bluehaven',         type:'civic',  cat:'Transport',region:'bluehaven', x:1480,y:660, size:'b-xl', icon:'🚉', price:0, owner:'Stat',   income:0,    expenses:0},
+
+  // Bluehaven City - business/commercial
+  {id:'b-super1',  name:'MegaMart Supermarket',   type:'comm',   cat:'Comerț',  region:'bluehaven', x:760, y:880,  size:'b-lg', icon:'🛒', price:350000, income:0, expenses:0},
+  {id:'b-shop1',   name:'Boutique Lumière',       type:'comm',   cat:'Comerț',  region:'bluehaven', x:880, y:920,  size:'b-md', icon:'👗', price:120000, income:0, expenses:0},
+  {id:'b-elec1',   name:'TechHub Electronics',    type:'comm',   cat:'Comerț',  region:'bluehaven', x:980, y:880,  size:'b-md', icon:'📱', price:200000, income:0, expenses:0},
+  {id:'b-pharma1', name:'PharmaPlus',            type:'comm',   cat:'Comerț',  region:'bluehaven', x:1080,y:920,  size:'b-md', icon:'💊', price:140000, income:0, expenses:0},
+  {id:'b-rest1',   name:'Restaurant Bella Vista',type:'comm',   cat:'Restaurante',region:'bluehaven', x:1180,y:880, size:'b-md', icon:'🍽️', price:150000, income:0, expenses:0},
+  {id:'b-cafe1',   name:'Cafeneaua Aurora',       type:'comm',   cat:'Restaurante',region:'bluehaven', x:1280,y:920, size:'b-sm', icon:'☕', price:35000,  income:0, expenses:0},
+  {id:'b-fast1',   name:'Burger Express',         type:'comm',   cat:'Restaurante',region:'bluehaven', x:1380,y:880, size:'b-md', icon:'🍔', price:80000,  income:0, expenses:0},
+  {id:'b-fuel1',   name:'Petrol Station Central', type:'comm',   cat:'Comerț',  region:'bluehaven', x:1480,y:920,  size:'b-md', icon:'⛽', price:500000, income:0, expenses:0},
+  {id:'b-hotel1',  name:'Grand Hotel Bluehaven', type:'comm',   cat:'Servicii',region:'bluehaven', x:1580,y:880,  size:'b-xl', icon:'🏨', price:750000, income:0, expenses:0},
+  {id:'b-off1',    name:'Office Tower A',         type:'comm',   cat:'Birouri', region:'bluehaven', x:980, y:380,  size:'b-xl', icon:'🏢', price:480000, income:0, expenses:0},
+  {id:'b-off2',    name:'Office Tower B',         type:'comm',   cat:'Birouri', region:'bluehaven', x:1180,y:380, size:'b-xl', icon:'🏢', price:520000, income:0, expenses:0},
+
+  // Bluehaven City - residential
+  {id:'b-apt1',  name:'Residențe Central Apartament mic',  type:'res', cat:'Locuință', region:'bluehaven', x:680, y:1000, size:'b-md', icon:'🏢', price:65000,  income:0, expenses:0, housingIdx:1},
+  {id:'b-apt2',  name:'Residențe Central Apartament mediu',type:'res', cat:'Locuință', region:'bluehaven', x:760, y:1020, size:'b-lg', icon:'🏢', price:95000,  income:0, expenses:0, housingIdx:2},
+  {id:'b-apt3',  name:'Residențe Park Premium',            type:'prem',cat:'Locuință', region:'bluehaven', x:880, y:1000, size:'b-lg', icon:'🏢', price:160000, income:0, expenses:0, housingIdx:3},
+  {id:'b-apt4',  name:'Garsoniere Downtown',                type:'res', cat:'Locuință', region:'bluehaven', x:1080,y:1040, size:'b-md', icon:'🏢', price:35000,  income:0, expenses:0, housingIdx:0},
+
+  // Westport - industrial
+  {id:'b-fac1',  name:'Fabrică de mobilă Westwood',  type:'ind', cat:'Industrial', region:'westport', x:1960,y:880, size:'b-xl', icon:'🏭', price:900000,  income:0, expenses:0},
+  {id:'b-fac2',  name:'Fabrică alimentară NutriFood',type:'ind', cat:'Industrial', region:'westport', x:2080,y:880, size:'b-xl', icon:'🏭', price:1200000, income:0, expenses:0},
+  {id:'b-fac3',  name:'Fabrică materiale construcții',type:'ind',cat:'Industrial', region:'westport', x:2200,y:880, size:'b-xl', icon:'🏭', price:1500000, income:0, expenses:0},
+  {id:'b-depot1',name:'Centru logistic Westport',    type:'ind', cat:'Logistică',  region:'westport', x:2000,y:1080,size:'b-xl', icon:'📦', price:3500000, income:0, expenses:0},
+  {id:'b-recyc', name:'Centru de reciclare EcoPro',  type:'ind', cat:'Industrial', region:'westport', x:2120,y:1100,size:'b-lg', icon:'♻️', price:280000,  income:0, expenses:0},
+  {id:'b-garage',name:'Atelier mecanic Westport',    type:'ind', cat:'Industrial', region:'westport', x:2240,y:1080,size:'b-md', icon:'🔧', price:110000,  income:0, expenses:0},
+
+  // Pinecrest
+  {id:'b-house1',name:'Casă suburbană Pine 1',  type:'res', cat:'Locuință', region:'pinecrest', x:120,y:1180,size:'b-md', icon:'🏡', price:135000, income:0, expenses:0, housingIdx:5},
+  {id:'b-house2',name:'Casă suburbană Pine 2',  type:'res', cat:'Locuință', region:'pinecrest', x:200,y:1240,size:'b-md', icon:'🏡', price:135000, income:0, expenses:0, housingIdx:5},
+  {id:'b-villa1',name:'Vilă Pine Hill',         type:'prem',cat:'Locuință', region:'pinecrest', x:340,y:1180,size:'b-lg', icon:'🏰', price:350000, income:0, expenses:0, housingIdx:6},
+  {id:'b-pc-cafe',name:'Cafeneaua Pine',         type:'comm',cat:'Restaurante',region:'pinecrest', x:140,y:1340,size:'b-sm', icon:'☕', price:35000,  income:0, expenses:0},
+  {id:'b-pc-rest',name:'Restaurant La Pine',     type:'comm',cat:'Restaurante',region:'pinecrest', x:220,y:1340,size:'b-md', icon:'🍽️', price:150000, income:0, expenses:0},
+  {id:'b-pc-pharma',name:'Farmacia Pine',        type:'comm',cat:'Comerț',  region:'pinecrest', x:320,y:1340,size:'b-sm', icon:'💊', price:140000, income:0, expenses:0},
+
+  // Little Briar (rural)
+  {id:'b-rural1',name:'Casă rurală Briar 1',     type:'res', cat:'Locuință', region:'littlebriar', x:700,y:1340,size:'b-sm', icon:'🏚️', price:55000, income:0, expenses:0, housingIdx:4},
+  {id:'b-rural2',name:'Casă rurală Briar 2',     type:'res', cat:'Locuință', region:'littlebriar', x:780,y:1380,size:'b-sm', icon:'🏚️', price:55000, income:0, expenses:0, housingIdx:4},
+  {id:'b-farm1',name:'Fermă Little Briar',        type:'ind', cat:'Agricol',   region:'littlebriar', x:920,y:1380,size:'b-lg', icon:'🚜', price:180000, income:0, expenses:0},
+  {id:'b-rural-sh',name:'Magazin rural Briar',    type:'comm',cat:'Comerț',    region:'littlebriar', x:1080,y:1340,size:'b-sm',icon:'🏪', price:45000,  income:0, expenses:0},
+
+  // Greenfield Farms
+  {id:'b-gf1',name:'Fermă Greenfield 1',          type:'ind', cat:'Agricol',   region:'greenfield', x:1320,y:1300,size:'b-lg', icon:'🌾', price:240000, income:0, expenses:0},
+  {id:'b-gf2',name:'Sere Greenfield',              type:'ind', cat:'Agricol',   region:'greenfield', x:1450,y:1300,size:'b-lg', icon:'🌱', price:200000, income:0, expenses:0},
+  {id:'b-gf3',name:'Livada Greenfield',            type:'ind', cat:'Agricol',   region:'greenfield', x:1580,y:1300,size:'b-md', icon:'🍎', price:160000, income:0, expenses:0},
+  {id:'b-gf4',name:'Siloz Greenfield',             type:'ind', cat:'Agricol',   region:'greenfield', x:1700,y:1300,size:'b-md', icon:'🏗️', price:120000, income:0, expenses:0},
+
+  // Silverlake (tourist)
+  {id:'b-sl1',name:'Cabana Silverlake',           type:'prem',cat:'Locuință',  region:'silverlake', x:1940,y:140, size:'b-sm', icon:'🛖', price:280000, income:0, expenses:0, housingIdx:7},
+  {id:'b-sl2',name:'Vilă de lux Lake View',       type:'prem',cat:'Locuință',  region:'silverlake', x:2040,y:200, size:'b-lg', icon:'🏰', price:850000, income:0, expenses:0, housingIdx:7},
+  {id:'b-sl3',name:'Restaurant Panoramic',       type:'comm',cat:'Restaurante',region:'silverlake', x:2180,y:240, size:'b-md', icon:'🍽️', price:180000, income:0, expenses:0},
+  {id:'b-sl4',name:'Camping Silverlake',          type:'comm',cat:'Servicii',  region:'silverlake', x:2080,y:340, size:'b-md', icon:'⛺', price:120000, income:0, expenses:0},
+];
+
+/* Roads layout (positions in 2400x1800 canvas) */
+const ROADS=[
+  {cls:'h',x:0,y:540,w:2400},
+  {cls:'h',x:0,y:880,w:2400},
+  {cls:'v',x:760,y:0,h:1800},
+  {cls:'v',x:1080,y:0,h:1800},
+  {cls:'v',x:1380,y:0,h:1800},
+  {cls:'h',x:0,y:1240,w:2400},
+];
+
+/* ============================================================
+   GAME STATE
+   ============================================================ */
+const STATE={
+  version:'0.0.1',
+  player:{
+    name:'Jucător',
+    cash:5000,
+    bank:0,
+    savings:0,
+    debt:0,
+    reputation:50,   /* 0-100 */
+    creditScore:700, /* 300-850 */
+    energy:100,      /* 0-100 */
+    health:100,
+    happiness:60,
+    skills:{},        /* domain -> xp points */
+    qualifications:[], /* array of strings */
+    job:null,         /* current job object */
+    jobLevel:1,
+    jobXp:0,
+    jobXpNeeded:100,
+    ownedProperties:[],   /* array of property records */
+    ownedBusinesses:[],   /* array of business records */
+    ownedLand:[],         /* array of land records */
+    rentedOut:[],         /* array of rental records */
+    activeLoans:[],       /* array of loan records */
+    inventory:[],         /* array of {name,qty,cat} */
+    rentHome:null,        /* home currently rented by player */
+  },
+  world:{
+    day:1,
+    hour:8,
+    speed:1,             /* 0=paused, 1=normal, 2=fast */
+    season:'Primăvară',  /* Primăvară, Vară, Toamnă, Iarnă */
+    seasonIdx:0,
+    weather:'Senin',
+    inflation:1.0,
+    marketTrend:{},      /* product -> price multiplier */
+  },
+  economy:{
+    jobsTaken:{},         /* jobId -> owned? (we just track current job in player) */
+    businessState:{},     /* businessInstanceId -> {stock,sales,profitToday,...} */
+    lastDailyIncome:0,
+    lastDailyExpense:0,
+    lastDailyProfit:0,
+    totalEarned:0,
+    totalSpent:0,
+  },
+  notifications:[],
+  selectedBuildingId:null,
+};
+
+/* Tax brackets (Romania-inspired, simplified) */
+const TAX_BRACKETS=[
+  {upTo:3000, rate:0.10, deduct:0},
+  {upTo:6000, rate:0.20, deduct:300},
+  {upTo:12000,rate:0.30, deduct:900},
+  {upTo:Infinity,rate:0.40, deduct:2100},
+];
+const CAS_RATE=0.35; /* social contribution approx */
+
+function netFromGross(gross){
+  /* CAS on gross, then income tax on remainder */
+  const cas=gross*CAS_RATE;
+  const taxable=gross-cas;
+  const bracket=TAX_BRACKETS.find(b=>gross<=b.upTo);
+  const tax=taxable*bracket.rate - bracket.deduct;
+  return Math.max(0, gross-cas-tax);
+}
+
+/* ============================================================
+   WORLD RENDERING
+   ============================================================ */
+function buildWorld(){
+  const world=$('#world');
+  world.innerHTML='';
+
+  /* Regions */
+  REGIONS.forEach(r=>{
+    const el=document.createElement('div');
+    el.className='region '+r.cls;
+    el.style.left=getRegionStyle(r.id).left;
+    el.style.top=getRegionStyle(r.id).top;
+    el.style.width=getRegionStyle(r.id).width;
+    el.style.height=getRegionStyle(r.id).height;
+    el.innerHTML=`<div class="region-label">${r.name}<small>${r.sub}</small></div>`;
+    world.appendChild(el);
+  });
+
+  /* Lake */
+  const lake=document.createElement('div');
+  lake.className='lake';
+  world.appendChild(lake);
+
+  /* Roads */
+  ROADS.forEach(rd=>{
+    const r=document.createElement('div');
+    r.className='road '+rd.cls;
+    r.style.left=rd.x+'px';
+    r.style.top=rd.y+'px';
+    if(rd.cls==='h') r.style.width=rd.w+'px';
+    else r.style.height=rd.h+'px';
+    world.appendChild(r);
+  });
+
+  /* Trees scattered */
+  for(let i=0;i<60;i++){
+    const t=document.createElement('div');
+    t.className='tree';
+    /* place in grass-only areas (outside regions roughly) */
+    let tx,ty,ok=false,tries=0;
+    while(!ok && tries<30){
+      tx=rndi(50,2350); ty=rndi(50,1750);
+      ok = !isInsideRegion(tx,ty) || inRegionId(tx,ty)==='silverlake';
+      tries++;
+    }
+    if(ok){
+      t.style.left=tx+'px';t.style.top=ty+'px';
+      t.style.transform=`scale(${rnd(.7,1.3)})`;
+      world.appendChild(t);
+    }
+  }
+
+  /* Buildings */
+  WORLD_BUILDINGS.forEach(b=>{
+    const el=document.createElement('div');
+    el.className=`building b-${b.size==='b-sm'?'sm':b.size==='b-md'?'md':b.size==='b-lg'?'lg':'xl'} t-${b.type}`;
+    el.dataset.id=b.id;
+    el.style.left=b.x+'px';
+    el.style.top=b.y+'px';
+    el.innerHTML=`<div class="roof"></div><div class="body"></div><div class="ico">${b.icon}</div>`;
+    el.title=b.name;
+    el.addEventListener('click',()=>selectBuilding(b.id));
+    world.appendChild(el);
+  });
+
+  /* Special plots */
+  SPECIAL_PLOTS.forEach(p=>{
+    const pos=getSpecialPos(p.id);
+    const el=document.createElement('div');
+    el.className='building b-md t-land special';
+    el.dataset.id=p.id;
+    el.style.left=pos.x+'px';
+    el.style.top=pos.y+'px';
+    el.innerHTML=`<div class="ico">${p.zone==='Comercial'?'🏗️':p.zone==='Industrial'?'⚙️':p.zone==='Agricol'?'🌾':'🌳'}</div>`;
+    el.title=p.name+' — '+p.area+' mp · '+p.zone;
+    el.addEventListener('click',()=>openSpecialPlot(p.id));
+    world.appendChild(el);
+  });
+}
+
+/* Helper: region position lookup (sync with CSS classes above) */
+function getRegionStyle(id){
+  const map={
+    bluehaven:  {left:'520px',  top:'200px',  width:'1300px', height:'980px'},
+    westport:   {left:'1880px', top:'760px',  width:'480px',  height:'780px'},
+    pinecrest:  {left:'80px',   top:'1080px', width:'560px',  height:'560px'},
+    littlebriar:{left:'660px',  top:'1240px', width:'560px',  height:'460px'},
+    greenfield: {left:'1280px', top:'1180px', width:'540px',  height:'520px'},
+    silverlake: {left:'1880px', top:'60px',   width:'480px',  height:'620px'},
+  };
+  return map[id]||{left:'0',top:'0',width:'0',height:'0'};
+}
+function getRegionRect(id){
+  const s=getRegionStyle(id);
+  return {x:parseInt(s.left),y:parseInt(s.top),w:parseInt(s.width),h:parseInt(s.height)};
+}
+function isInsideRegion(x,y){
+  return REGIONS.some(r=>{
+    const rc=getRegionRect(r.id);
+    return x>=rc.x && x<=rc.x+rc.w && y>=rc.y && y<=rc.y+rc.h;
+  });
+}
+function inRegionId(x,y){
+  for(const r of REGIONS){
+    const rc=getRegionRect(r.id);
+    if(x>=rc.x && x<=rc.x+rc.w && y>=rc.y && y<=rc.y+rc.h) return r.id;
+  }
+  return null;
+}
+
+function getSpecialPos(id){
+  /* Distribute special plots visibly inside their region */
+  const map={
+    sp1:{x:1500,y:680}, sp2:{x:600,y:1000}, sp3:{x:1960,y:1300},
+    sp4:{x:480, y:1180}, sp5:{x:1100,y:1380}, sp6:{x:1340,y:1500},
+    sp7:{x:1960,y:60},  sp8:{x:2200,y:80},
+  };
+  return map[id];
+}
+
+/* ============================================================
+   PANEL CONTROL
+   ============================================================ */
+let currentPanel='world';
+
+function openPanel(name, opts={}){
+  closePanel(false);
+  currentPanel=name;
+  $$('.menu-btn').forEach(b=>b.classList.toggle('active',b.dataset.panel===name));
+
+  const panel=$('#panel');
+  const titleMap={
+    world:['🗺️','Harta Bluehaven'],
+    properties:['🏠','Proprietățile mele'],
+    job:['💼','Carieră & Locuri de muncă'],
+    business:['🏬','Afacerile mele'],
+    market:['🛒','Magazine & Piață'],
+    bank:['🏦','Finanțe & Împrumuturi'],
+    report:['📊','Raport economic'],
+    building:['🏢', opts.title||'Clădire'],
+    special:['🌳', opts.title||'Teren special'],
+  };
+  const [ico,title]=titleMap[name]||['📋','Panel'];
+  $('#ph-ico').textContent=ico;
+  $('#ph-title').textContent=title;
+  $('#ph-body').innerHTML='';
+  panel.classList.add('open');
+
+  const renderers={
+    world:renderWorldPanel,
+    properties:renderPropertiesPanel,
+    job:renderJobPanel,
+    business:renderBusinessPanel,
+    market:renderMarketPanel,
+    bank:renderBankPanel,
+    report:renderReportPanel,
+    building:()=>renderBuildingPanel(opts.buildingId),
+    special:()=>renderSpecialPlotPanel(opts.plotId),
+  };
+  (renderers[name]||renderWorldPanel)();
+}
+
+function closePanel(reselect=true){
+  $('#panel').classList.remove('open');
+  if(reselect){
+    $$('.menu-btn').forEach(b=>b.classList.toggle('active',b.dataset.panel==='world'));
+    currentPanel='world';
+  }
+}
+
+/* ============================================================
+   RENDERERS
+   ============================================================ */
+function renderWorldPanel(){
+  const body=$('#ph-body');
+  body.innerHTML=`
+    <div class="section-title">Regiunile lumii Bluehaven</div>
+    <div class="cards">
+      ${REGIONS.map(r=>`
+        <div class="card" onclick="flyToRegion('${r.id}')">
+          <div class="c-ico">${regionIcon(r.id)}</div>
+          <div class="c-body">
+            <div class="c-title">${r.name}</div>
+            <div class="c-sub">${r.sub}</div>
+          </div>
+          <div class="c-act"><button class="btn btn-ghost">Vezi</button></div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="section-title">Terenuri speciale de dezvoltare (${SPECIAL_PLOTS.filter(p=>!STATE.player.ownedLand.find(l=>l.id===p.id)).length}/${SPECIAL_PLOTS.length} disponibile)</div>
+    <div class="cards">
+      ${SPECIAL_PLOTS.map(p=>{
+        const owned=STATE.player.ownedLand.find(l=>l.id===p.id);
+        return `
+        <div class="card">
+          <div class="c-ico">${p.zone==='Comercial'?'🏗️':p.zone==='Industrial'?'⚙️':p.zone==='Agricol'?'🌾':'🌳'}</div>
+          <div class="c-body">
+            <div class="c-title">${p.name}</div>
+            <div class="c-sub">${regionName(p.region)} · ${p.area} mp · ${p.zone}</div>
+          </div>
+          <div class="c-act">
+            <div class="price">${owned?'DEȚINUT':fmt(p.price)}</div>
+            ${owned?'<span class="badge good">✓ Al tău</span>':`<button class="btn btn-primary" onclick="openSpecialPlot('${p.id}')">Detalii</button>`}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="b-info">Harta este continuă și explorabilă. Apasă pe orice clădire pentru a interacționa.</div>
+  `;
+}
+function regionIcon(id){
+  return {bluehaven:'🏙️',westport:'🏭',pinecrest:'🏡',littlebriar:'🏚️',greenfield:'🌾',silverlake:'🏞️'}[id]||'🗺️';
+}
+function regionName(id){
+  return REGIONS.find(r=>r.id===id)?.name||id;
+}
+function flyToRegion(id){
+  const rc=getRegionRect(id);
+  const cx=rc.x+rc.w/2, cy=rc.y+rc.h/2;
+  panTo(cx,cy);
+  closePanel();
+}
+
+function renderPropertiesPanel(){
+  const body=$('#ph-body');
+  const owned=STATE.player.ownedProperties;
+  const land=STATE.player.ownedLand;
+  const rented=STATE.player.rentedOut;
+  const homeRent=STATE.player.rentHome;
+
+  body.innerHTML=`
+    <div class="tabs">
+      <button class="tab active" data-tab="own">Locuințe (${owned.length})</button>
+      <button class="tab" data-tab="land">Terenuri (${land.length})</button>
+      <button class="tab" data-tab="rented">Închiriate (${rented.length})</button>
+      <button class="tab" data-tab="home">Casa mea ${homeRent?'(închiriat)':'(—)'}</button>
+    </div>
+    <div id="tab-content"></div>
+  `;
+  $$('.tab',body).forEach(t=>t.addEventListener('click',()=>{
+    $$('.tab',body).forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    renderPropTab(t.dataset.tab);
+  }));
+  renderPropTab('own');
+}
+function renderPropTab(which){
+  const c=$('#tab-content');
+  if(which==='own'){
+    const owned=STATE.player.ownedProperties;
+    if(!owned.length){
+      c.innerHTML=`<div class="empty"><div class="em-ico">🏠</div>Nu deții nicio locuință.<br>Mergeți la hartă și apasă pe o clădire rezidențială pentru a o cumpăra.</div>`;
+      return;
+    }
+    c.innerHTML=`<div class="cards">${
+      owned.map(p=>{
+        const h=HOUSING[p.housingIdx];
+        return `
+        <div class="card">
+          <div class="c-ico">${p.type==='prem'?'🏰':'🏡'}</div>
+          <div class="c-body">
+            <div class="c-title">${p.name}</div>
+            <div class="c-sub">${h.type} · Capacitate ${h.capacity} · ${regionName(p.region)}</div>
+            <div class="bar ${p.condition>60?'good':p.condition>30?'warn':'bad'}"><div style="width:${p.condition}%"></div></div>
+            <div class="c-sub" style="margin-top:4px">Stare: ${p.condition}% · Valoare: ${fmt(p.value)}</div>
+          </div>
+          <div class="c-act">
+            <button class="btn btn-primary" onclick="manageProp('${p.id}')">Administrează</button>
+          </div>
+        </div>`;
+      }).join('')
+    }</div>`;
+  }
+  else if(which==='land'){
+    const land=STATE.player.ownedLand;
+    if(!land.length){
+      c.innerHTML=`<div class="empty"><div class="em-ico">🌳</div>Nu deții terenuri.</div>`;
+      return;
+    }
+    c.innerHTML=`<div class="cards">${
+      land.map(l=>`
+        <div class="card">
+          <div class="c-ico">${l.zone==='Comercial'?'🏗️':l.zone==='Industrial'?'⚙️':l.zone==='Agricol'?'🌾':'🌳'}</div>
+          <div class="c-body">
+            <div class="c-title">${l.name}</div>
+            <div class="c-sub">${l.area} mp · ${l.zone} · ${regionName(l.region)}</div>
+            <div class="c-sub">Valoare estimată: ${fmt(l.value)}</div>
+          </div>
+          <div class="c-act">
+            <button class="btn btn-warn" onclick="sellLand('${l.id}')">Vinde</button>
+            <button class="btn btn-ghost" onclick="buildOnLand('${l.id}')">Construiește</button>
+          </div>
+        </div>
+      `).join('')
+    }</div>`;
+  }
+  else if(which==='rented'){
+    const r=STATE.player.rentedOut;
+    if(!r.length){
+      c.innerHTML=`<div class="empty"><div class="em-ico">🔑</div>Nu ai chiriași.</div>`;
+      return;
+    }
+    c.innerHTML=`<div class="cards">${
+      r.map(rg=>`
+        <div class="card">
+          <div class="c-ico">🔑</div>
+          <div class="c-body">
+            <div class="c-title">${rg.name}</div>
+            <div class="c-sub">Chirie/lună: ${fmt(rg.rent)} · ${rg.tenant||'Chiriaș anonim'}</div>
+            <div class="c-sub">Venit zilnic: ${fmt(rg.rent/30)}</div>
+          </div>
+          <div class="c-act">
+            <button class="btn btn-bad" onclick="endRental('${rg.id}')">Oprește</button>
+          </div>
+        </div>
+      `).join('')
+    }</div>`;
+  }
+  else if(which==='home'){
+    const h=STATE.player.rentHome;
+    if(!h){
+      c.innerHTML=`<div class="empty"><div class="em-ico">🛏️</div>Nu locuiești nicăierea.<br><br>Cumpără o locuință sau închiriază una de pe hartă.</div>`;
+      return;
+    }
+    c.innerHTML=`
+      <div class="card">
+        <div class="c-ico">${h.kind==='rent'?'🔑':'🏠'}</div>
+        <div class="c-body">
+          <div class="c-title">${h.name}</div>
+          <div class="c-sub">${h.kind==='rent'?'Închiriat':'Proprietate personală'} · ${regionName(h.region)}</div>
+          <div class="c-sub">${h.kind==='rent'?`Chirie/lună: ${fmt(h.rent)}`:`Valoare: ${fmt(h.value)}`}</div>
+        </div>
+        <div class="c-act">
+          ${h.kind==='rent'?`<button class="btn btn-bad" onclick="moveOut()">Mută-te</button>`:''}
+        </div>
+      </div>`;
+  }
+}
+
+function renderJobPanel(){
+  const body=$('#ph-body');
+  const p=STATE.player;
+  const net = p.job ? netFromGross(p.job.salary) : 0;
+  body.innerHTML=`
+    <div class="section-title">Situația curentă</div>
+    <div class="card">
+      <div class="c-ico">💼</div>
+      <div class="c-body">
+        <div class="c-title">${p.job?p.job.title+' @ '+p.job.domain:'Șomer'}</div>
+        <div class="c-sub">${p.job?`Salariu brut: ${fmt(p.job.salary)}/lună · Net: ${fmt(net)}/lună`:''}</div>
+        ${p.job?`<div class="bar" style="margin-top:6px"><div style="width:${Math.min(100,p.jobXp/p.jobXpNeeded*100)}%"></div></div>
+        <div class="c-sub" style="margin-top:4px">Experiență: ${p.jobXp}/${p.jobXpNeeded} XP · Nivel ${p.jobLevel}</div>`:''}
+      </div>
+      <div class="c-act">
+        ${p.job?`<button class="btn btn-bad" onclick="quitJob()">Demisionează</button>`:''}
+      </div>
+    </div>
+
+    <div class="section-title">Aptitudini</div>
+    <div class="cards">
+      ${Object.keys(p.skills).length===0?'<div class="empty"><div class="em-ico">📈</div>Încă nu ai aptitudini. Acceptă un job pentru a câștiga experiență.</div>':Object.entries(p.skills).map(([d,xp])=>`
+        <div class="card">
+          <div class="c-ico">⭐</div>
+          <div class="c-body">
+            <div class="c-title">${d}</div>
+            <div class="bar"><div style="width:${Math.min(100,xp/1000*100)}%"></div></div>
+            <div class="c-sub">${xp} XP în ${d}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="section-title">Locuri de muncă disponibile</div>
+    <div class="cards">
+      ${JOBS.filter(j=>!p.job||j.title!==p.job.title).map((j,i)=>`
+        <div class="card">
+          <div class="c-ico">${jobIcon(j.domain)}</div>
+          <div class="c-body">
+            <div class="c-title">${j.title}</div>
+            <div class="c-sub">${j.domain} · ${fmt(j.min)}–${fmt(j.max)}/lună brut</div>
+            <div class="c-sub">Cerințe: ${j.exp>0?j.exp+' luni xp · ':''}${j.edu}</div>
+          </div>
+          <div class="c-act">
+            <div class="price">Net ~${fmt(netFromGross((j.min+j.max)/2))}</div>
+            <button class="btn ${canApply(j)?'btn-primary':'btn-ghost'}" ${canApply(j)?'':'disabled'} onclick="applyJob(${i})">Aplică</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="b-info">Salariul net = brut − CAS (35%) − impozit progresiv (10–40%). Experiența se acumulează automat în fiecare zi lucrată.</div>
+  `;
+}
+function jobIcon(d){
+  return {Retail:'🛍️',Restaurante:'🍽️',Logistică:'📦',Agricultură:'🌾',Construcții:'👷',Industrie:'🏭',Transport:'🚚',Medicină:'⚕️',Educație:'📚',Administrație:'🏛️',IT:'💻',Management:'👔'}[d]||'💼';
+}
+function canApply(j){
+  const p=STATE.player;
+  if(j.edu==='Niciuna') return true;
+  if(j.edu==='Liceu') return true; /* assumed baseline */
+  if(j.edu==='Permis') return p.qualifications.includes('Permis');
+  if(j.edu==='Calificare') return p.qualifications.includes('Calificare');
+  if(j.edu==='Tehnic') return p.qualifications.includes('Tehnic');
+  if(j.edu==='Medical') return p.qualifications.includes('Medical');
+  if(j.edu==='Universitar') return p.qualifications.includes('Universitar');
+  if(j.edu==='MBA') return p.qualifications.includes('MBA');
+  return false;
+}
+
+function renderBusinessPanel(){
+  const body=$('#ph-body');
+  const own=STATE.player.ownedBusinesses;
+  body.innerHTML=`
+    <div class="section-title">Afacerile tale (${own.length})</div>
+    <div class="cards">
+      ${own.length===0?'<div class="empty"><div class="em-ico">🏬</div>Nu deții nicio afacere.<br>Cumpără una din hartă sau deschide una nouă mai jos.</div>':own.map(b=>`
+        <div class="card">
+          <div class="c-ico">${businessIcon(b.cat)}</div>
+          <div class="c-body">
+            <div class="c-title">${b.name}</div>
+            <div class="c-sub">${b.type} · ${b.cat} · ${b.staff.length} angajați</div>
+            <div class="c-sub">Stoc: ${b.stock} unități · Profit azi: <span class="${b.lastProfit>=0?'good':'bad'}" style="color:${b.lastProfit>=0?'var(--good)':'var(--bad)'};font-weight:800">${fmt(b.lastProfit)}</span></div>
+          </div>
+          <div class="c-act">
+            <button class="btn btn-primary" onclick="manageBiz('${b.id}')">Administrează</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="section-title">Deschide o afacere nouă</div>
+    <div class="cards">
+      ${BUSINESSES.map((b,i)=>`
+        <div class="card">
+          <div class="c-ico">${businessIcon(b.cat)}</div>
+          <div class="c-body">
+            <div class="c-title">${b.type}</div>
+            <div class="c-sub">${b.cat} · ${b.staff} angajați necesari · Venit zilnic: ${fmt(b.dailyIncome[0])}–${fmt(b.dailyIncome[1])}</div>
+          </div>
+          <div class="c-act">
+            <div class="price">${fmt(b.invest)}</div>
+            <button class="btn ${STATE.player.cash>=b.invest?'btn-primary':'btn-ghost'}" ${STATE.player.cash>=b.invest?'':'disabled'} onclick="openBiz(${i})">Deschide</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="b-info">Profitul = venituri − salarii − utilități − marfă. Achiziția include autorizație, echipament și capital inițial.</div>
+  `;
+}
+function businessIcon(c){
+  return {Comerț:'🛒',Restaurante:'🍽️',Servicii:'🛎️',Industrial:'🏭'}[c]||'🏬';
+}
+
+function renderMarketPanel(){
+  const body=$('#ph-body');
+  const products=PRODUCTS.map(p=>{
+    const mult=STATE.world.marketTrend[p.name]||1;
+    const trend=mult>1.05?'⬆️':mult<0.95?'⬇️':'➡️';
+    return {...p, price:p.base*mult*STATE.world.inflation, mult, trend};
+  });
+  body.innerHTML=`
+    <div class="section-title">Prețuri curente la piață</div>
+    <div class="cards">
+      ${products.map(p=>`
+        <div class="card">
+          <div class="c-ico">${productIcon(p.cat)}</div>
+          <div class="c-body">
+            <div class="c-title">${p.name}</div>
+            <div class="c-sub">${p.cat} · Tendență: ${p.trend} ${p.mult>1.05?'+':p.mult<0.95?'−':''}${Math.abs((p.mult-1)*100).toFixed(1)}%</div>
+          </div>
+          <div class="c-act">
+            <div class="price">${p.price.toFixed(2)}</div>
+            <button class="btn btn-good" onclick="buyProduct('${p.name}')">Cumpără</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="section-title">Inventarul tău</div>
+    <div class="cards">
+      ${STATE.player.inventory.length===0?'<div class="empty"><div class="em-ico">🧺</div>Inventar gol.</div>':STATE.player.inventory.map(i=>`
+        <div class="card">
+          <div class="c-ico">${productIcon(i.cat)}</div>
+          <div class="c-body">
+            <div class="c-title">${i.name}</div>
+            <div class="c-sub">${i.cat} · ${i.qty} unități</div>
+          </div>
+          <div class="c-act">
+            <button class="btn btn-warn" onclick="consumeProduct('${i.name}')">Consumă/Folosește</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+function productIcon(c){
+  return {Alimentare:'🍞',Haine:'👕',Electronice:'📱',Mobilă:'🛋️',Construcții:'🧱',Combustibil:'⛽',Auto:'🔧',Farmacie:'💊',Librărie:'📖'}[c]||'📦';
+}
+
+function renderBankPanel(){
+  const body=$('#ph-body');
+  const p=STATE.player;
+  body.innerHTML=`
+    <div class="section-title">Contul tău</div>
+    <div class="cards">
+      <div class="card">
+        <div class="c-ico">💵</div>
+        <div class="c-body"><div class="c-title">Numerar</div><div class="c-sub">Bani disponibili imediat</div></div>
+        <div class="c-act"><div class="price">${fmt(p.cash)}</div></div>
+      </div>
+      <div class="card">
+        <div class="c-ico">🏦</div>
+        <div class="c-body"><div class="c-title">Cont curent</div><div class="c-sub">Transferabil, fără dobândă</div></div>
+        <div class="c-act">
+          <div class="price">${fmt(p.bank)}</div>
+          <div class="btn-row">
+            <button class="btn btn-good" onclick="bankOp('deposit')">Depune</button>
+            <button class="btn btn-warn" onclick="bankOp('withdraw')">Retrage</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="c-ico">💰</div>
+        <div class="c-body"><div class="c-title">Cont de economii</div><div class="c-sub">Dobândă 3% pe lună</div></div>
+        <div class="c-act">
+          <div class="price">${fmt(p.savings)}</div>
+          <div class="btn-row">
+            <button class="btn btn-good" onclick="savingsOp('deposit')">Depune</button>
+            <button class="btn btn-warn" onclick="savingsOp('withdraw')">Retrage</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="c-ico">📉</div>
+        <div class="c-body"><div class="c-title">Datorii totale</div><div class="c-sub">${p.activeLoans.length} credite active</div></div>
+        <div class="c-act"><div class="price" style="color:var(--bad)">${fmt(p.debt)}</div></div>
+      </div>
+    </div>
+
+    <div class="section-title">Credit score: ${p.creditScore} ${p.creditScore>=700?'(Excelent)':p.creditScore>=600?'(Bun)':p.creditScore>=500?'(Mediocru)':'(Riscant)'}</div>
+    <div class="bar ${p.creditScore>=700?'good':p.creditScore>=600?'warn':'bad'}"><div style="width:${(p.creditScore-300)/550*100}%"></div></div>
+
+    <div class="section-title">Împrumuturi active</div>
+    <div class="cards">
+      ${p.activeLoans.length===0?'<div class="empty"><div class="em-ico">📄</div>Niciun împrumut activ.</div>':p.activeLoans.map(l=>`
+        <div class="card">
+          <div class="c-ico">📄</div>
+          <div class="c-body">
+            <div class="c-title">${l.type}</div>
+            <div class="c-sub">Restant: ${fmt(l.remaining)} · Dobândă: ${(l.rate*100).toFixed(1)}%/lună · ${l.installmentsLeft} rate</div>
+            <div class="c-sub">Rata lunară: ${fmt(l.monthlyPayment)}</div>
+          </div>
+          <div class="c-act">
+            <button class="btn btn-warn" onclick="payLoan('${l.id}')">Plătește o rată</button>
+            <button class="btn btn-bad" onclick="repayLoanFull('${l.id}')">Achită total</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="section-title">Solicită credit nou</div>
+    <div class="cards">
+      ${[
+        {type:'Credit personal',      max:20000,  rate:0.045},
+        {type:'Credit ipotecar',      max:500000, rate:0.018},
+        {type:'Credit pentru afaceri',max:500000, rate:0.025},
+        {type:'Credit pentru utilaje',max:100000,rate:0.030},
+        {type:'Credit pentru extindere',max:200000,rate:0.028},
+      ].map((c,i)=>`
+        <div class="card">
+          <div class="c-ico">🏦</div>
+          <div class="c-body">
+            <div class="c-title">${c.type}</div>
+            <div class="c-sub">Max: ${fmt(c.max)} · Dobândă: ${(c.rate*100).toFixed(2)}%/lună</div>
+          </div>
+          <div class="c-act">
+            <button class="btn btn-primary" onclick="applyLoan(${i})">Solicită</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="b-info">Neplata ratelor scade credit score-ul și poate duce la executare silită și pierderea proprietăților.</div>
+  `;
+}
+
+function renderReportPanel(){
+  const body=$('#ph-body');
+  const e=STATE.economy;
+  const p=STATE.player;
+  const totalAssets = p.ownedProperties.reduce((s,x)=>s+x.value,0)
+                     + p.ownedLand.reduce((s,x)=>s+x.value,0)
+                     + p.ownedBusinesses.reduce((s,x)=>s+x.value,0);
+  const netWorth = p.cash + p.bank + p.savings + totalAssets - p.debt;
+  body.innerHTML=`
+    <div class="section-title">Bilanț financiar (Ziua ${STATE.world.day})</div>
+    <div class="kv">
+      <div class="k">Numerar</div><div class="v good">${fmt(p.cash)}</div>
+      <div class="k">Cont bancar</div><div class="v">${fmt(p.bank)}</div>
+      <div class="k">Economii</div><div class="v">${fmt(p.savings)}</div>
+      <div class="k">Valoare proprietăți</div><div class="v">${fmt(p.ownedProperties.reduce((s,x)=>s+x.value,0))}</div>
+      <div class="k">Valoare terenuri</div><div class="v">${fmt(p.ownedLand.reduce((s,x)=>s+x.value,0))}</div>
+      <div class="k">Valoare afaceri</div><div class="v">${fmt(p.ownedBusinesses.reduce((s,x)=>s+x.value,0))}</div>
+      <div class="k">Datorii</div><div class="v bad">${fmt(p.debt)}</div>
+      <div class="k" style="font-weight:800">Patrimoniu net</div><div class="v good" style="font-size:15px">${fmt(netWorth)}</div>
+    </div>
+
+    <div class="section-title">Ultima zi economică</div>
+    <div class="kv">
+      <div class="k">Venituri</div><div class="v good">${fmt(e.lastDailyIncome)}</div>
+      <div class="k">Cheltuieli</div><div class="v bad">${fmt(e.lastDailyExpense)}</div>
+      <div class="k" style="font-weight:800">Profit/Pierdere</div><div class="v ${e.lastDailyProfit>=0?'good':'bad'}" style="font-size:15px">${fmt(e.lastDailyProfit)}</div>
+    </div>
+
+    <div class="section-title">Statistici generale</div>
+    <div class="kv">
+      <div class="k">Total câșigat (de la început)</div><div class="v good">${fmt(e.totalEarned)}</div>
+      <div class="k">Total cheltuit</div><div class="v bad">${fmt(e.totalSpent)}</div>
+      <div class="k">Proprietăți deținute</div><div class="v">${p.ownedProperties.length}</div>
+      <div class="k">Afaceri deținute</div><div class="v">${p.ownedBusinesses.length}</div>
+      <div class="k">Terenuri deținute</div><div class="v">${p.ownedLand.length}</div>
+      <div class="k">Reputație</div><div class="v">${p.reputation}/100</div>
+      <div class="k">Credit score</div><div class="v">${p.creditScore}</div>
+    </div>
+    <div class="section-title">Evoluție patrimoniu (ultimele 14 zile)</div>
+    <div id="worthChart" style="height:120px;background:#f4f7fb;border-radius:8px;padding:8px;"></div>
+  `;
+  drawWorthChart(netWorth);
+}
+let worthHistory=[];
+function drawWorthChart(currentWorth){
+  worthHistory.push(currentWorth);
+  if(worthHistory.length>14) worthHistory.shift();
+  const el=$('#worthChart');
+  if(!el) return;
+  const w=el.clientWidth-16, h=el.clientHeight-16;
+  const max=Math.max(...worthHistory,1), min=Math.min(...worthHistory,0);
+  const range=Math.max(1,max-min);
+  const pts=worthHistory.map((v,i)=>`${(i/(worthHistory.length-1||1))*w},${h-((v-min)/range)*h}`).join(' ');
+  el.innerHTML=`<svg width="100%" height="100%" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <polyline fill="none" stroke="#1f7ae0" stroke-width="2" points="${pts}"/>
+    <polyline fill="rgba(31,122,224,.15)" stroke="none" points="0,${h} ${pts} ${w},${h}"/>
+  </svg>`;
+}
+
+/* Building detail panel */
+function renderBuildingPanel(bid){
+  const b=WORLD_BUILDINGS.find(x=>x.id===bid);
+  if(!b){closePanel();return;}
+  const body=$('#ph-body');
+  const ownedByPlayer = STATE.player.ownedProperties.find(p=>p.id===bid) ||
+                       STATE.player.ownedBusinesses.find(p=>p.id===bid) ||
+                       STATE.player.ownedLand.find(p=>p.id===bid);
+  const isHousing = b.type==='res'||b.type==='prem';
+  const isComm = b.type==='comm';
+  const isCivic = b.type==='civic';
+
+  body.innerHTML=`
+    <div class="card" style="background:linear-gradient(135deg,#eaf2ff,#f4f7fb)">
+      <div class="c-ico" style="font-size:32px">${b.icon}</div>
+      <div class="c-body">
+        <div class="c-title" style="font-size:16px">${b.name}</div>
+        <div class="c-sub">${b.cat} · ${regionName(b.region)}</div>
+        <div class="c-sub">Proprietar: ${ownedByPlayer?'Tu':'Stat'}</div>
+      </div>
+    </div>
+
+    ${isCivic?`
+      <div class="b-info" style="margin-top:10px">Clădire de interes public. Nu poate fi cumpărată, dar poate fi vizitată pentru servicii.</div>
+      <div class="section-title">Servicii disponibile</div>
+      <div class="cards">
+        ${b.id==='b-bank'?'<div class="card"><div class="c-ico">🏦</div><div class="c-body"><div class="c-title">Servicii bancare</div><div class="c-sub">Cont, credite, economii</div></div><div class="c-act"><button class="btn btn-primary" onclick="openPanel(\'bank\')">Deschide</button></div></div>':''}
+        ${b.id==='b-cityhall'?'<div class="card"><div class="c-ico">🏛️</div><div class="c-body"><div class="c-title">Servicii administrative</div><div class="c-sub">Autorizații, taxe</div></div><div class="c-act"><button class="btn btn-ghost" onclick="toast(\'Autorizație de construcție: €250\',\'warn\')">Autorizație</button></div></div>':''}
+        ${b.id==='b-univ'?'<div class="card"><div class="c-ico">🎓</div><div class="c-body"><div class="c-title">Universitate</div><div class="c-sub">Calificare superioară</div></div><div class="c-act"><button class="btn btn-warn" onclick="enrollUniv()">Înscrie-te · €5.000</button></div></div>':''}
+        ${b.id==='b-hospital'?'<div class="card"><div class="c-ico">🏥</div><div class="c-body"><div class="c-title">Spital</div><div class="c-sub">Tratament și recuperare</div></div><div class="c-act"><button class="btn btn-warn" onclick="treatHospital()">Tratament · €200</button></div></div>':''}
+        ${b.id==='b-school'?'<div class="card"><div class="c-ico">🏫</div><div class="c-body"><div class="c-title">Școală profesională</div><div class="c-sub">Calificare tehnică</div></div><div class="c-act"><button class="btn btn-warn" onclick="enrollSchool()">Înscrie-te · €1.500</button></div></div>':''}
+        ${b.id==='b-train'?'<div class="card"><div class="c-ico">🚉</div><div class="c-body"><div class="c-title">Gară</div><div class="c-sub">Călătorii și marfă</div></div><div class="c-act"><button class="btn btn-ghost" onclick="toast(\'Transport în dezvoltare în Partea 2\',\'warn\')">Info</button></div></div>':''}
+      </div>
+    `:''}
+
+    ${isHousing?renderHousingDetail(b,ownedByPlayer):''}
+    ${isComm?renderBusinessDetail(b,ownedByPlayer):''}
+  `;
+}
+
+function renderHousingDetail(b,owned){
+  if(!owned){
+    const h=HOUSING[b.housingIdx];
+    return `
+      <div class="section-title">Detalii locuință</div>
+      <div class="kv">
+        <div class="k">Tip</div><div class="v">${h.type}</div>
+        <div class="k">Camere</div><div class="v">${h.capacity}</div>
+        <div class="k">Preț achiziție</div><div class="v good">${fmt(h.price)}</div>
+        <div class="k">Chirie estimată/lună</div><div class="v">${fmt(h.rent)}</div>
+        <div class="k">Costuri întreținere/lună</div><div class="v">${fmt(h.rent*0.25)}</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="buyProperty('${b.id}')">Cumpără · ${fmt(h.price)}</button>
+        <button class="btn btn-good" onclick="rentProperty('${b.id}')">Închiriază · ${fmt(h.rent)}/lună</button>
+      </div>
+      ${STATE.player.creditScore>=650?`<button class="btn btn-warn" style="width:100%;margin-top:8px" onclick="buyWithMortgage('${b.id}')">Cumpără cu credit ipotecar</button>`:''}
+    `;
+  }
+  /* owned */
+  const p=STATE.player.ownedProperties.find(x=>x.id===b.id);
+  const h=HOUSING[p.housingIdx];
+  return `
+    <div class="section-title">Locuința ta</div>
+    <div class="kv">
+      <div class="k">Tip</div><div class="v">${h.type}</div>
+      <div class="k">Capacitate</div><div class="v">${h.capacity} persoane</div>
+      <div class="k">Valoare curentă</div><div class="v good">${fmt(p.value)}</div>
+      <div class="k">Stare</div><div class="v">${p.condition}%</div>
+      <div class="k">Cost întreținere/lună</div><div class="v">${fmt(h.rent*0.25)}</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-warn" onclick="repairProp('${b.id}')">Repară · ${fmt(h.price*0.05)}</button>
+      <button class="btn btn-good" onclick="rentOutProp('${b.id}')">Închiriază · ${fmt(h.rent)}/lună</button>
+      <button class="btn btn-bad" onclick="sellProperty('${b.id}')">Vinde · ${fmt(p.value)}</button>
+    </div>
+  `;
+}
+
+function renderBusinessDetail(b,owned){
+  if(!owned){
+    const biz=BUSINESSES.find(x=>x.invest===b.price)||BUSINESSES.find(x=>Math.abs(x.invest-b.price)<5000)||{type:b.name,invest:b.price,cat:b.cat,dailyIncome:[b.price*0.001,b.price*0.003],staff:3};
+    return `
+      <div class="section-title">Afacere ${biz.type}</div>
+      <div class="kv">
+        <div class="k">Categorie</div><div class="v">${biz.cat}</div>
+        <div class="k">Investiție inițială</div><div class="v good">${fmt(biz.invest)}</div>
+        <div class="k">Personal necesar</div><div class="v">${biz.staff} angajați</div>
+        <div class="k">Venit zilnic estimat</div><div class="v">${fmt(biz.dailyIncome[0])}–${fmt(biz.dailyIncome[1])}</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="buyBusiness('${b.id}')">Cumpără · ${fmt(biz.invest)}</button>
+      </div>
+      <div class="b-info">Profitul depinde de personal, stoc, prețuri și cerere. Cheltuieli lunare: salarii + utilități + marfă.</div>
+    `;
+  }
+  const p=STATE.player.ownedBusinesses.find(x=>x.id===b.id);
+  return `
+    <div class="section-title">Afacerea ta</div>
+    <div class="kv">
+      <div class="k">Venit zilnic azi</div><div class="v good">${fmt(p.lastIncome)}</div>
+      <div class="k">Cheltuieli azi</div><div class="v bad">${fmt(p.lastExpense)}</div>
+      <div class="k">Profit azi</div><div class="v ${p.lastProfit>=0?'good':'bad'}">${fmt(p.lastProfit)}</div>
+      <div class="k">Stoc</div><div class="v">${p.stock} unități</div>
+      <div class="k">Angajați</div><div class="v">${p.staff.length}/${p.staffNeeded}</div>
+      <div class="k">Salarii/lună</div><div class="v">${fmt(p.staff.reduce((s,x)=>s+x.salary,0))}</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="manageBiz('${b.id}')">Administrează</button>
+      <button class="btn btn-warn" onclick="orderStock('${b.id}')">Comandă marfă · ${fmt(p.stockCost)}</button>
+      <button class="btn btn-bad" onclick="sellBusiness('${b.id}')">Vinde · ${fmt(p.value)}</button>
+    </div>
+  `;
+}
+
+function renderSpecialPlotPanel(pid){
+  const p=SPECIAL_PLOTS.find(x=>x.id===pid);
+  if(!p){closePanel();return;}
+  const owned=STATE.player.ownedLand.find(l=>l.id===pid);
+  const body=$('#ph-body');
+  body.innerHTML=`
+    <div class="card" style="background:linear-gradient(135deg,#fff8e6,#f4f7fb)">
+      <div class="c-ico" style="font-size:32px">${p.zone==='Comercial'?'🏗️':p.zone==='Industrial'?'⚙️':p.zone==='Agricol'?'🌾':'🌳'}</div>
+      <div class="c-body">
+        <div class="c-title" style="font-size:16px">${p.name}</div>
+        <div class="c-sub">${regionName(p.region)} · ${p.area} mp · Zonificare: ${p.zone}</div>
+      </div>
+    </div>
+    ${owned?`
+      <div class="section-title">Terenul tău special</div>
+      <div class="kv">
+        <div class="k">Suprafață</div><div class="v">${p.area} mp</div>
+        <div class="k">Zonificare</div><div class="v">${p.zone}</div>
+        <div class="k">Valoare</div><div class="v good">${fmt(owned.value)}</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="developPlot('${pid}')">Dezvoltă teren</button>
+        <button class="btn btn-warn" onclick="sellLand('${pid}')">Vinde · ${fmt(owned.value)}</button>
+      </div>
+    `:`
+      <div class="section-title">Detalii teren</div>
+      <div class="kv">
+        <div class="k">Suprafață</div><div class="v">${p.area} mp</div>
+        <div class="k">Zonificare</div><div class="v">${p.zone}</div>
+        <div class="k">Preț/mp</div><div class="v">${fmt(p.price/p.area)}</div>
+        <div class="k">Preț total</div><div class="v good">${fmt(p.price)}</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="buyLand('${pid}')">Cumpără · ${fmt(p.price)}</button>
+      </div>
+      <div class="b-info">Terenurile speciale sunt opt la număr și permit dezvoltare majoră: clădiri, ferme, complexuri comerciale sau industriale.</div>
+    `}
+  `;
+}
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+function selectBuilding(id){
+  STATE.selectedBuildingId=id;
+  $$('.building').forEach(el=>el.classList.remove('selected'));
+  const el=document.querySelector(`.building[data-id="${id}"]`);
+  if(el) el.classList.add('selected');
+  const b=WORLD_BUILDINGS.find(x=>x.id===id);
+  if(b) openPanel('building',{buildingId:id,title:b.name});
+}
+
+function buyProperty(bid){
+  const b=WORLD_BUILDINGS.find(x=>x.id===bid);
+  if(!b) return;
+  const h=HOUSING[b.housingIdx];
+  if(STATE.player.cash<h.price){toast('Fonduri insuficiente!','bad');return;}
+  STATE.player.cash-=h.price;
+  STATE.economy.totalSpent+=h.price;
+  const prop={
+    id:bid, name:b.name, region:b.region, type:b.type,
+    housingIdx:b.housingIdx, value:h.price, condition:100,
+    purchasePrice:h.price, purchaseDay:STATE.world.day,
+  };
+  STATE.player.ownedProperties.push(prop);
+  markOwned(bid);
+  toast(`Ai cumpărat ${b.name}!`,'good');
+  news(`Tranzacție imobiliară: ${b.name} (${fmt(h.price)})`,'good');
+  refreshHUD();
+  renderBuildingPanel(bid);
+}
+function buyWithMortgage(bid){
+  const b=WORLD_BUILDINGS.find(x=>x.id===bid);
+  if(!b) return;
+  const h=HOUSING[b.housingIdx];
+  if(STATE.player.creditScore<650){toast('Credit score prea scăzut!','bad');return;}
+  const downPayment=h.price*0.20;
+  if(STATE.player.cash<downPayment){toast('Avans minim 20%: '+fmt(downPayment),'bad');return;}
+  STATE.player.cash-=downPayment;
+  const loanAmount=h.price-downPayment;
+  /* Create mortgage */
+  const installments=120; /* 10 years */
+  const monthlyRate=0.018;
+  const monthlyPayment=(loanAmount*(1+monthlyRate*installments))/installments;
+  STATE.player.activeLoans.push({
+    id:uid('loan'), type:'Credit ipotecar', principal:loanAmount,
+    remaining:loanAmount*(1+monthlyRate*installments), rate:monthlyRate,
+    monthlyPayment, installmentsLeft:installments, securedBy:bid,
+  });
+  STATE.player.debt+=loanAmount*(1+monthlyRate*installments);
+  const prop={id:bid,name:b.name,region:b.region,type:b.type,housingIdx:b.housingIdx,value:h.price,condition:100,purchasePrice:h.price,purchaseDay:STATE.world.day};
+  STATE.player.ownedProperties.push(prop);
+  markOwned(bid);
+  toast(`Cumpărat cu ipotecă! Avans: ${fmt(downPayment)}`,'good');
+  news(`Credit ipotecar activat pentru ${b.name} · ${fmt(loanAmount)}`,'warn');
+  refreshHUD(); renderBuildingPanel(bid);
+}
+function rentProperty(bid){
+  const b=WORLD_BUILDINGS.find(x=>x.id===bid);
+  if(!b) return;
+  const h=HOUSING[b.housingIdx];
+  if(STATE.player.rentHome){toast('Deja locuiești undeva.','warn');return;}
+  STATE.player.rentHome={id:bid,kind:'rent',name:b.name,region:b.region,rent:h.rent,housingIdx:b.housingIdx};
+  toast(`Ai închiriat ${b.name}!`,'good');
+  news(`Contract de chirie semnat: ${b.name} · ${fmt(h.rent)}/lună`);
+  refreshHUD();
+  closePanel();
+}
+function manageProp(bid){
+  const b=WORLD_BUILDINGS.find(x=>x.id===bid);
+  const p=STATE.player.ownedProperties.find(x=>x.id===bid);
+  if(!p) return;
+  openPanel('building',{buildingId:bid,title:b?b.name:p.name});
+}
+
+function sellProperty(bid){
+  const idx=STATE.player.ownedProperties.findIndex(p=>p.id===bid);
+  if(idx<0) return;
+  const p=STATE.player.ownedProperties[idx];
+  STATE.player.cash+=p.value;
+  STATE.economy.totalEarned+=p.value;
+  STATE.player.ownedProperties.splice(idx,1);
+  unmarkOwned(bid);
+  toast(`Vândut ${p.name} pentru ${fmt(p.value)}`,'good');
+  news(`Vânzare imobil: ${p.name} · ${fmt(p.value)}`);
+  refreshHUD(); closePanel();
+}
+function repairProp(bid){
+  const p=STATE.player.ownedProperties.find(x=>x.id===bid);
+  if(!p) return;
+  const h=HOUSING[p.housingIdx];
+  const cost=h.price*0.05;
+  if(STATE.player.cash<cost){toast('Fonduri insuficiente!','bad');return;}
+  STATE.player.cash-=cost;
+  STATE.economy.totalSpent+=cost;
+  p.condition=100;
+  toast('Locuință reparată complet!','good');
+  refreshHUD(); renderBuildingPanel(bid);
+}
+function rentOutProp(bid){
+  const p=STATE.player.ownedProperties.find(x=>x.id===bid);
+  if(!p) return;
+  if(STATE.player.rentedOut.find(r=>r.id===bid)){toast('Deja închiriată.','warn');return;}
+  const h=HOUSING[p.housingIdx];
+  const tenantName=pick(['Andrei P.','Maria S.','Ion T.','Elena V.','Radu M.','Cristina D.','Vlad B.','Ana G.']);
+  STATE.player.rentedOut.push({id:bid,name:p.name,rent:h.rent,tenant:tenantName});
+  toast(`${p.name} închiriată lui ${tenantName}!`,'good');
+  news(`Venit nou din chirie: ${p.name} · ${fmt(h.rent)}/lună`,'good');
+  refreshHUD(); renderBuildingPanel(bid);
+}
+function endRental(rid){
+  const idx=STATE.player.rentedOut.findIndex(r=>r.id===rid);
+  if(idx<0) return;
+  const r=STATE.player.rentedOut[idx];
+  STATE.player.rentedOut.splice(idx,1);
+  toast(`Contract de chirie încheiat pentru ${r.name}.`,'warn');
+  refreshHUD(); openPanel('properties');
+}
+function moveOut(){
+  if(!STATE.player.rentHome) return;
+  toast(`Te-ai mutat din ${STATE.player.rentHome.name}.`,'warn');
+  STATE.player.rentHome=null;
+  refreshHUD(); openPanel('properties');
+}
+
+function buyBusiness(bid){
+  const b=WORLD_BUILDINGS.find(x=>x.id===bid);
+  if(!b) return;
+  const biz=BUSINESSES.find(x=>Math.abs(x.invest-b.price)<5000)||{type:b.name,invest:b.price,cat:b.cat,dailyIncome:[b.price*0.001,b.price*0.003],staff:3};
+  if(STATE.player.cash<biz.invest){toast('Fonduri insuficiente!','bad');return;}
+  STATE.player.cash-=biz.invest;
+  STATE.economy.totalSpent+=biz.invest;
+  const newBiz={
+    id:bid, name:b.name, region:b.region, type:biz.type, cat:biz.cat,
+    value:biz.invest, purchasePrice:biz.invest, purchaseDay:STATE.world.day,
+    staff:[], staffNeeded:biz.staff, stock:50, stockCost: biz.invest*0.02,
+    lastIncome:0, lastExpense:0, lastProfit:0,
+    dailyIncomeRange:biz.dailyIncome, markup:1.3,
+  };
+  /* Auto-hire minimum staff */
+  for(let i=0;i<biz.staff;i++){
+    newBiz.staff.push({name:pick(['Lucian','Andreea','Mihai','Cătălina','Bogdan','Diana']),role:i===0?'Manager':'Angajat',salary:1800+rndi(0,400)});
+  }
+  STATE.player.ownedBusinesses.push(newBiz);
+  markOwned(bid);
+  toast(`Ai cumpărat ${b.name}!`,'good');
+  news(`Achiziție afacere: ${b.name} · ${fmt(biz.invest)}`,'good');
+  refreshHUD(); renderBuildingPanel(bid);
+}
+function sellBusiness(bid){
+  const idx=STATE.player.ownedBusinesses.findIndex(p=>p.id===bid);
+  if(idx<0) return;
+  const b=STATE.player.ownedBusinesses[idx];
+  STATE.player.cash+=b.value;
+  STATE.economy.totalEarned+=b.value;
+  STATE.player.ownedBusinesses.splice(idx,1);
+  unmarkOwned(bid);
+  toast(`Vândut ${b.name} pentru ${fmt(b.value)}`,'good');
+  news(`Vânzare afacere: ${b.name} · ${fmt(b.value)}`);
+  refreshHUD(); closePanel();
+}
+function manageBiz(bid){
+  const b=STATE.player.ownedBusinesses.find(x=>x.id===bid);
+  if(!b) return;
+  const body=$('#ph-body');
+  $('#ph-title').textContent='Administrează: '+b.name;
+  body.innerHTML=`
+    <div class="section-title">Personal (${b.staff.length}/${b.staffNeeded})</div>
+    <div class="cards">
+      ${b.staff.map((s,i)=>`
+        <div class="card">
+          <div class="c-ico">👤</div>
+          <div class="c-body">
+            <div class="c-title">${s.name}</div>
+            <div class="c-sub">${s.role} · ${fmt(s.salary)}/lună</div>
+          </div>
+          <div class="c-act"><button class="btn btn-bad" onclick="fireStaff('${bid}',${i})">Concediază</button></div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="hireStaff('${bid}')">Angajează (+${fmt(2000)}/lună)</button></div>
+
+    <div class="section-title">Stoc și prețuri</div>
+    <div class="kv">
+      <div class="k">Stoc curent</div><div class="v">${b.stock} unități</div>
+      <div class="k">Cost comandă marfă</div><div class="v">${fmt(b.stockCost)}</div>
+      <div class="k">Adaos preț</div><div class="v">${(b.markup*100).toFixed(0)}%</div>
+      <div class="k">Venit zilnic azi</div><div class="v good">${fmt(b.lastIncome)}</div>
+      <div class="k">Cheltuieli azi</div><div class="v bad">${fmt(b.lastExpense)}</div>
+      <div class="k">Profit azi</div><div class="v ${b.lastProfit>=0?'good':'bad'}">${fmt(b.lastProfit)}</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-warn" onclick="orderStock('${bid}')">Comandă marfă</button>
+      <button class="btn btn-ghost" onclick="adjustMarkup('${bid}',-0.1)">Scade preț</button>
+      <button class="btn btn-ghost" onclick="adjustMarkup('${bid}',0.1)">Crește preț</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-good" onclick="upgradeBiz('${bid}')">Upgrade · ${fmt(b.value*0.3)}</button>
+      <button class="btn btn-bad" onclick="sellBusiness('${bid}')">Vinde afacerea</button>
+    </div>
+  `;
+}
+function hireStaff(bid){
+  const b=STATE.player.ownedBusinesses.find(x=>x.id===bid);
+  if(!b) return;
+  if(b.staff.length>=b.staffNeeded*2){toast('Capacitate maximă de personal atinsă.','warn');return;}
+  b.staff.push({name:pick(['Lucian','Andreea','Mihai','Cătălina','Bogdan','Diana']),role:'Angajat',salary:1800+rndi(0,400)});
+  toast('Angajat nou!','good');
+  manageBiz(bid);
+}
+function fireStaff(bid,i){
+  const b=STATE.player.ownedBusinesses.find(x=>x.id===bid);
+  if(!b||!b.staff[i]) return;
+  b.staff.splice(i,1);
+  toast('Angajat concediat.','warn');
+  manageBiz(bid);
+}
+function orderStock(bid){
+  const b=STATE.player.ownedBusinesses.find(x=>x.id===bid);
+  if(!b) return;
+  if(STATE.player.cash<b.stockCost){toast('Fonduri insuficiente!','bad');return;}
+  STATE.player.cash-=b.stockCost;
+  STATE.economy.totalSpent+=b.stockCost;
+  b.stock+=100;
+  toast('Marfă comandată: +100 unități','good');
+  manageBiz(bid);
+  refreshHUD();
+}
+function adjustMarkup(bid,delta){
+  const b=STATE.player.ownedBusinesses.find(x=>x.id===bid);
+  if(!b) return;
+  b.markup=clamp(b.markup+delta,0.8,2.0);
+  toast(`Adaos preț setat la ${(b.markup*100).toFixed(0)}%`);
+  manageBiz(bid);
+}
+function upgradeBiz(bid){
+  const b=STATE.player.ownedBusinesses.find(x=>x.id===bid);
+  if(!b) return;
+  const cost=b.value*0.3;
+  if(STATE.player.cash<cost){toast('Fonduri insuficiente!','bad');return;}
+  STATE.player.cash-=cost;
+  STATE.economy.totalSpent+=cost;
+  b.value*=1.3;
+  b.staffNeeded+=2;
+  b.dailyIncomeRange=[b.dailyIncomeRange[0]*1.3,b.dailyIncomeRange[1]*1.3];
+  toast('Afacerire actualizată! Capacitate +30%','good');
+  news(`Upgrade afacere: ${b.name}`,'good');
+  manageBiz(bid); refreshHUD();
+}
+function openBiz(i){
+  const biz=BUSINESSES[i];
+  if(STATE.player.cash<biz.invest){toast('Fonduri insuficiente!','bad');return;}
+  STATE.player.cash-=biz.invest;
+  STATE.economy.totalSpent+=biz.invest;
+  const newId=uid('biz');
+  const newBiz={
+    id:newId, name:biz.type+' #'+(STATE.player.ownedBusinesses.length+1), region:'bluehaven',
+    type:biz.type, cat:biz.cat, value:biz.invest, purchasePrice:biz.invest, purchaseDay:STATE.world.day,
+    staff:[], staffNeeded:biz.staff, stock:50, stockCost:biz.invest*0.02,
+    lastIncome:0, lastExpense:0, lastProfit:0, dailyIncomeRange:biz.dailyIncome, markup:1.3,
+  };
+  for(let j=0;j<biz.staff;j++){
+    newBiz.staff.push({name:pick(['Lucian','Andreea','Mihai','Cătălina','Bogdan','Diana']),role:j===0?'Manager':'Angajat',salary:1800+rndi(0,400)});
+  }
+  STATE.player.ownedBusinesses.push(newBiz);
+  toast(`Ai deschis ${biz.type}!`,'good');
+  news(`Afacerire nouă: ${biz.type}`,'good');
+  refreshHUD(); openPanel('business');
+}
+
+function buyLand(pid){
+  const p=SPECIAL_PLOTS.find(x=>x.id===pid);
+  if(!p) return;
+  if(STATE.player.cash<p.price){toast('Fonduri insuficiente!','bad');return;}
+  STATE.player.cash-=p.price;
+  STATE.economy.totalSpent+=p.price;
+  STATE.player.ownedLand.push({
+    id:pid, name:p.name, region:p.region, area:p.area, zone:p.zone,
+    value:p.price, purchasePrice:p.price, purchaseDay:STATE.world.day,
+  });
+  markOwned(pid);
+  toast(`Ai cumpărat ${p.name}!`,'good');
+  news(`Achiziție teren: ${p.name} · ${fmt(p.price)}`,'good');
+  refreshHUD(); renderSpecialPlotPanel(pid);
+}
+function sellLand(lid){
+  const idx=STATE.player.ownedLand.findIndex(l=>l.id===lid);
+  if(idx<0) return;
+  const l=STATE.player.ownedLand[idx];
+  STATE.player.cash+=l.value;
+  STATE.economy.totalEarned+=l.value;
+  STATE.player.ownedLand.splice(idx,1);
+  unmarkOwned(lid);
+  toast(`Vândut ${l.name} pentru ${fmt(l.value)}`,'good');
+  refreshHUD(); closePanel();
+}
+function buildOnLand(lid){
+  const l=STATE.player.ownedLand.find(x=>x.id===lid);
+  if(!l) return;
+  toast('Opțiuni construcție pe teren — dezvoltare extinsă în Partea 2','warn');
+  /* Stub for Part 2 — agriculture/industry expansion */
+  const cost=l.value*0.5;
+  if(STATE.player.cash<cost){toast('Fonduri insuficiente!','bad');return;}
+  if(confirm(`Construiește pe ${l.name}? Cost: ${fmt(cost)}`)){
+    STATE.player.cash-=cost;
+    STATE.economy.totalSpent+=cost;
+    l.value*=1.5;
+    toast(`Construcție finalizată pe ${l.name}! Valoare +50%`,'good');
+    news(`Dezvoltare teren: ${l.name}`,'good');
+    refreshHUD();
+  }
+}
+function developPlot(pid){
+  buildOnLand(pid);
+}
+function openSpecialPlot(pid){
+  openPanel('special',{plotId:pid,title:SPECIAL_PLOTS.find(p=>p.id===pid).name});
+}
+
+function applyJob(i){
+  const j=JOBS[i];
+  if(!canApply(j)){toast('Nu îndeplinești cerințele!','bad');return;}
+  const salary=(j.min+j.max)/2 * (1+STATE.player.jobLevel*0.05);
+  STATE.player.job={...j,salary,domain:j.domain,title:j.title};
+  STATE.player.jobXp=0;
+  STATE.player.jobLevel=1;
+  STATE.player.jobXpNeeded=100;
+  toast(`Angajat ca ${j.title} la ${j.domain}!`,'good');
+  news(`Job nou: ${j.title} · ${fmt(salary)}/lună brut`,'good');
+  refreshHUD(); openPanel('job');
+}
+function quitJob(){
+  if(!STATE.player.job) return;
+  toast(`Ai demisionat din ${STATE.player.job.title}.`,'warn');
+  news(`Demisie: ${STATE.player.job.title}`);
+  STATE.player.job=null;
+  STATE.player.jobXp=0;
+  refreshHUD(); openPanel('job');
+}
+
+function buyProduct(name){
+  const p=PRODUCTS.find(x=>x.name===name);
+  if(!p) return;
+  const mult=STATE.world.marketTrend[p.name]||1;
+  const price=p.base*mult*STATE.world.inflation;
+  if(STATE.player.cash<price){toast('Fonduri insuficiente!','bad');return;}
+  STATE.player.cash-=price;
+  STATE.economy.totalSpent+=price;
+  const existing=STATE.player.inventory.find(i=>i.name===name);
+  if(existing) existing.qty++;
+  else STATE.player.inventory.push({name:p.name,cat:p.cat,qty:1});
+  toast(`Cumpărat: ${p.name} (${fmt(price)})`,'good');
+  refreshHUD(); openPanel('market');
+}
+function consumeProduct(name){
+  const i=STATE.player.inventory.find(x=>x.name===name);
+  if(!i) return;
+  i.qty--;
+  if(i.qty<=0) STATE.player.inventory=STATE.player.inventory.filter(x=>x.name!==name);
+  /* Apply effects */
+  const p=PRODUCTS.find(x=>x.name===name);
+  if(p){
+    if(p.cat==='Alimentare'){STATE.player.energy=clamp(STATE.player.energy+15,0,100);STATE.player.health=clamp(STATE.player.health+3,0,100);}
+    if(p.cat==='Haine'){STATE.player.happiness=clamp(STATE.player.happiness+5,0,100);}
+    if(p.cat==='Electronice'){STATE.player.happiness=clamp(STATE.player.happiness+10,0,100);}
+    if(p.cat==='Farmacie'){STATE.player.health=clamp(STATE.player.health+15,0,100);}
+  }
+  toast(`Folosit: ${name}`,'good');
+  refreshHUD(); openPanel('market');
+}
+
+function bankOp(op){
+  const amt=prompt(op==='deposit'?'Cât depui în bancă?':'Cât retragi din bancă?','1000');
+  if(!amt) return;
+  const v=Math.max(0,parseFloat(amt)||0);
+  if(op==='deposit'){
+    if(STATE.player.cash<v){toast('Numerar insuficient!','bad');return;}
+    STATE.player.cash-=v;
+    STATE.player.bank+=v;
+    toast(`Depus ${fmt(v)} în bancă.`,'good');
+  } else {
+    if(STATE.player.bank<v){toast('Sold bancar insuficient!','bad');return;}
+    STATE.player.bank-=v;
+    STATE.player.cash+=v;
+    toast(`Retras ${fmt(v)} din bancă.`,'good');
+  }
+  refreshHUD(); openPanel('bank');
+}
+function savingsOp(op){
+  const amt=prompt(op==='deposit'?'Cât depui în economii?':'Cât retragi din economii?','1000');
+  if(!amt) return;
+  const v=Math.max(0,parseFloat(amt)||0);
+  if(op==='deposit'){
+    if(STATE.player.cash<v){toast('Numerar insuficient!','bad');return;}
+    STATE.player.cash-=v;
+    STATE.player.savings+=v;
+    toast(`Depus ${fmt(v)} în economii.`,'good');
+  } else {
+    if(STATE.player.savings<v){toast('Economii insuficiente!','bad');return;}
+    STATE.player.savings-=v;
+    STATE.player.cash+=v;
+    toast(`Retras ${fmt(v)} din economii.`,'good');
+  }
+  refreshHUD(); openPanel('bank');
+}
+function applyLoan(i){
+  const types=[
+    {type:'Credit personal',      max:20000,  rate:0.045},
+    {type:'Credit ipotecar',      max:500000, rate:0.018},
+    {type:'Credit pentru afaceri',max:500000, rate:0.025},
+    {type:'Credit pentru utilaje',max:100000, rate:0.030},
+    {type:'Credit pentru extindere',max:200000,rate:0.028},
+  ];
+  const c=types[i];
+  const creditFactor=clamp(STATE.player.creditScore/700,0.3,1.5);
+  const maxAllowed=Math.min(c.max,Math.max(2000,c.max*creditFactor));
+  const amt=prompt(`Solicită ${c.type}. Maxim disponibil: ${fmt(maxAllowed)}. Sumă dorită:`,String(Math.round(maxAllowed/2)));
+  if(!amt) return;
+  const v=Math.max(0,parseFloat(amt)||0);
+  if(v>maxAllowed){toast('Sumă peste limita aprobată!','bad');return;}
+  const installments=36;
+  const total=v*(1+c.rate*installments);
+  const monthlyPayment=total/installments;
+  STATE.player.cash+=v;
+  STATE.player.bank+=0;
+  STATE.player.debt+=total;
+  STATE.player.activeLoans.push({
+    id:uid('loan'),type:c.type,principal:v,remaining:total,rate:c.rate,
+    monthlyPayment,installmentsLeft:installments,
+  });
+  STATE.player.creditScore=clamp(STATE.player.creditScore-10,300,850);
+  toast(`Împrumut aprobat: ${fmt(v)}. Rata: ${fmt(monthlyPayment)}/lună.`,'good');
+  news(`Credit nou: ${c.type} · ${fmt(v)}`,'warn');
+  refreshHUD(); openPanel('bank');
+}
+function payLoan(lid){
+  const l=STATE.player.activeLoans.find(x=>x.id===lid);
+  if(!l) return;
+  if(STATE.player.cash<l.monthlyPayment){toast('Fonduri insuficiente!','bad');return;}
+  STATE.player.cash-=l.monthlyPayment;
+  l.remaining-=l.monthlyPayment;
+  l.installmentsLeft--;
+  STATE.player.debt-=l.monthlyPayment;
+  STATE.economy.totalSpent+=l.monthlyPayment;
+  STATE.player.creditScore=clamp(STATE.player.creditScore+3,300,850);
+  if(l.remaining<=0||l.installmentsLeft<=0){
+    STATE.player.activeLoans=STATE.player.activeLoans.filter(x=>x.id!==lid);
+    toast(`Credit rambursat complet!`,'good');
+    news(`Credit închis: ${l.type}`,'good');
+  } else {
+    toast(`Rată plătită. Restant: ${fmt(l.remaining)}`,'good');
+  }
+  refreshHUD(); openPanel('bank');
+}
+function repayLoanFull(lid){
+  const l=STATE.player.activeLoans.find(x=>x.id===lid);
+  if(!l) return;
+  if(STATE.player.cash<l.remaining){toast('Fonduri insuficiente!','bad');return;}
+  STATE.player.cash-=l.remaining;
+  STATE.player.debt-=l.remaining;
+  STATE.economy.totalSpent+=l.remaining;
+  STATE.player.activeLoans=STATE.player.activeLoans.filter(x=>x.id!==lid);
+  STATE.player.creditScore=clamp(STATE.player.creditScore+15,300,850);
+  toast(`Credit achitat integral! Bonus credit score.`,'good');
+  refreshHUD(); openPanel('bank');
+}
+
+function enrollUniv(){
+  if(STATE.player.qualifications.includes('Universitar')){toast('Ai deja diplomă universitară.','warn');return;}
+  if(STATE.player.cash<5000){toast('Fonduri insuficiente!','bad');return;}
+  STATE.player.cash-=5000;
+  STATE.economy.totalSpent+=5000;
+  STATE.player.qualifications.push('Universitar');
+  toast('Înscriere la universitate confirmată! Calificare: Universitar.','good');
+  news('Calificare obținută: Universitar','good');
+  refreshHUD();
+}
+function enrollSchool(){
+  if(STATE.player.qualifications.includes('Calificare')){toast('Ai deja calificare.','warn');return;}
+  if(STATE.player.cash<1500){toast('Fonduri insuficiente!','bad');return;}
+  STATE.player.cash-=1500;
+  STATE.economy.totalSpent+=1500;
+  STATE.player.qualifications.push('Calificare');
+  toast('Calificare tehnică obținută!','good');
+  news('Calificare obținută: Tehnic','good');
+  refreshHUD();
+}
+function treatHospital(){
+  if(STATE.player.health>=100){toast('Sănătate maximă.','warn');return;}
+  if(STATE.player.cash<200){toast('Fonduri insuficiente!','bad');return;}
+  STATE.player.cash-=200;
+  STATE.player.health=100;
+  STATE.player.energy=clamp(STATE.player.energy+30,0,100);
+  toast('Tratament aplicat: sănătate 100%','good');
+  refreshHUD();
+}
+
+function markOwned(id){
+  const el=document.querySelector(`.building[data-id="${id}"]`);
+  if(el) el.classList.add('owned');
+}
+function unmarkOwned(id){
+  const el=document.querySelector(`.building[data-id="${id}"]`);
+  if(el) el.classList.remove('owned');
+}
+
+/* ============================================================
+   HUD & VISUAL UPDATES
+   ============================================================ */
+function refreshHUD(){
+  $('#hud-cash').textContent=fmt(STATE.player.cash);
+  $('#hud-bank').textContent=fmt(STATE.player.bank);
+  $('#hud-debt').textContent=fmt(STATE.player.debt);
+  $('#hud-day').textContent=STATE.world.day;
+  $('#hud-time').textContent=fmtTime(STATE.world.hour);
+  $('#hud-season').textContent=seasonIcon(STATE.world.season);
+  /* Re-mark all owned */
+  $$('.building').forEach(el=>el.classList.remove('owned'));
+  STATE.player.ownedProperties.forEach(p=>markOwned(p.id));
+  STATE.player.ownedBusinesses.forEach(p=>markOwned(p.id));
+  STATE.player.ownedLand.forEach(p=>markOwned(p.id));
+}
+function seasonIcon(s){
+  return {Primăvară:'🌸 Primăvară',Vară:'☀️ Vară',Toamnă:'🍂 Toamnă',Iarnă:'❄️ Iarnă'}[s]||s;
+}
+
+function updateStageVisual(){
+  const h=STATE.world.hour;
+  const stage=$('#stage');
+  stage.classList.remove('dusk','night');
+  if(h>=20||h<6) stage.classList.add('night');
+  else if(h>=18||h<8) stage.classList.add('dusk');
+}
+
+/* ============================================================
+   TIME & ECONOMY SIMULATION
+   ============================================================ */
+let lastTick=0;
+const TICK_MS_NORMAL=2000; /* 1 game hour = 2 real seconds at normal speed */
+const TICK_MS_FAST=600;
+const HOURS_PER_DAY=24;
+
+function gameLoop(now){
+  if(!lastTick) lastTick=now;
+  const speed=STATE.world.speed;
+  if(speed===0){requestAnimationFrame(gameLoop);return;}
+  const interval=speed===2?TICK_MS_FAST:TICK_MS_NORMAL;
+  if(now-lastTick>=interval){
+    lastTick=now;
+    advanceHour();
+  }
+  requestAnimationFrame(gameLoop);
+}
+
+function advanceHour(){
+  STATE.world.hour++;
+  if(STATE.world.hour>=HOURS_PER_DAY){
+    STATE.world.hour=0;
+    advanceDay();
+  }
+  updateStageVisual();
+  refreshHUD();
+}
+
+function advanceDay(){
+  STATE.world.day++;
+  /* Season change every 30 days */
+  if(STATE.world.day%30===1 && STATE.world.day>1){
+    STATE.world.seasonIdx=(STATE.world.seasonIdx+1)%4;
+    STATE.world.season=['Primăvară','Vară','Toamnă','Iarnă'][STATE.world.seasonIdx];
+    news(`Anotimp nou: ${STATE.world.season}`,'warn');
+  }
+  /* Random weather */
+  if(Math.random()<0.25){
+    STATE.world.weather=pick(['Senin','Înnorat','Ploios','Înnorat','Senin']);
+  }
+
+  /* Energy decay if no home */
+  if(!STATE.player.rentHome && !STATE.player.ownedProperties.length){
+    STATE.player.energy=clamp(STATE.player.energy-15,0,100);
+    if(STATE.player.energy<=0){
+      STATE.player.health=clamp(STATE.player.health-10,0,100);
+      news('Epuizare: ai nevoie de o locuință!','bad');
+    }
+  } else {
+    STATE.player.energy=clamp(STATE.player.energy+20,0,100);
+  }
+
+  /* Job income & XP */
+  let dailyIncome=0, dailyExpense=0;
+  if(STATE.player.job){
+    const netDaily=netFromGross(STATE.player.job.salary)/30;
+    dailyIncome+=netDaily;
+    /* Job XP for working days (Mon-Sat = 6 days/week) */
+    const dow=STATE.world.day%7;
+    if(dow!==0){ /* Sunday = 0 = rest */
+      STATE.player.jobXp+=10;
+      STATE.player.skills[STATE.player.job.domain]=(STATE.player.skills[STATE.player.job.domain]||0)+8;
+      if(STATE.player.jobXp>=STATE.player.jobXpNeeded){
+        STATE.player.jobXp=0;
+        STATE.player.jobLevel++;
+        STATE.player.jobXpNeeded=Math.round(STATE.player.jobXpNeeded*1.4);
+        STATE.player.job.salary*=(1+0.08);
+        news(`Promovare! Nivel ${STATE.player.jobLevel} · Salariu ${fmt(STATE.player.job.salary)}`,'good');
+      }
+    }
+  }
+
+  /* Rental income from rented-out properties */
+  STATE.player.rentedOut.forEach(r=>{
+    dailyIncome+=r.rent/30;
+  });
+
+  /* Business income */
+  STATE.player.ownedBusinesses.forEach(b=>{
+    /* Income: random within range, modified by stock and staff ratio */
+    const staffRatio=Math.min(1,b.staff.length/b.staffNeeded);
+    const stockMul=b.stock>30?1:0.4;
+    const markupMul=1+ (b.markup-1.3)*(-0.4); /* higher markup reduces volume */
+    let income=rnd(b.dailyIncomeRange[0],b.dailyIncomeRange[1])*staffRatio*stockMul*markupMul;
+    income=Math.max(0,income);
+    /* Daily expense: salaries/30 + utilities */
+    const salaries=b.staff.reduce((s,x)=>s+x.salary,0)/30;
+    const utilities=b.value*0.0005; /* 0.05% of value per day */
+    const expense=salaries+utilities;
+    /* Reduce stock */
+    b.stock=Math.max(0,b.stock-Math.round(income/20));
+    b.lastIncome=income;
+    b.lastExpense=expense;
+    b.lastProfit=income-expense;
+    dailyIncome+=income;
+    dailyExpense+=expense;
+  });
+
+  /* Housing expenses */
+  STATE.player.ownedProperties.forEach(p=>{
+    const h=HOUSING[p.housingIdx];
+    const maint=h.rent*0.25/30;
+    dailyExpense+=maint;
+    /* Property decay */
+    p.condition=clamp(p.condition-rnd(0.1,0.4),0,100);
+  });
+
+  /* Rent for rented home */
+  if(STATE.player.rentHome && STATE.player.rentHome.kind==='rent'){
+    dailyExpense+=STATE.player.rentHome.rent/30;
+  }
+
+  /* Loan payments (monthly, but daily fraction) */
+  STATE.player.activeLoans.forEach(l=>{
+    dailyExpense+=l.monthlyPayment/30;
+    l.remaining-=l.monthlyPayment/30;
+  });
+  /* If can't pay loans, reduce credit score */
+  if(STATE.player.activeLoans.length>0 && STATE.player.cash+STATE.player.bank<0){
+    STATE.player.creditScore=clamp(STATE.player.creditScore-2,300,850);
+  }
+
+  /* Savings interest */
+  if(STATE.player.savings>0){
+    const interest=STATE.player.savings*0.03/30;
+    STATE.player.savings+=interest;
+    dailyIncome+=interest;
+  }
+
+  /* Inflation slow creep */
+  STATE.world.inflation=clamp(STATE.world.inflation+0.0002,0.95,1.20);
+
+  /* Market trends: 5% chance each product shifts */
+  PRODUCTS.forEach(p=>{
+    if(Math.random()<0.10){
+      const cur=STATE.world.marketTrend[p.name]||1;
+      const next=clamp(cur*(1+rnd(-0.08,0.08)),0.5,2.0);
+      STATE.world.marketTrend[p.name]=next;
+    }
+  });
+
+  /* Apply totals */
+  STATE.player.cash+=dailyIncome-dailyExpense;
+  if(STATE.player.cash<0){
+    /* Auto-cover from bank if possible */
+    if(STATE.player.bank>Math.abs(STATE.player.cash)){
+      STATE.player.bank+=STATE.player.cash;
+      STATE.player.cash=0;
+    } else {
+      /* Take from savings */
+      const need= Math.abs(STATE.player.cash);
+      const fromBank=Math.min(STATE.player.bank,need);
+      STATE.player.bank-=fromBank;
+      let remaining=need-fromBank;
+      const fromSavings=Math.min(STATE.player.savings,remaining);
+      STATE.player.savings-=fromSavings;
+      remaining-=fromSavings;
+      STATE.player.cash=-remaining;
+      if(remaining>0){
+        news(`Deficit zilnic ${fmt(remaining)} — risc credit!`,'bad');
+        STATE.player.creditScore=clamp(STATE.player.creditScore-3,300,850);
+      }
+    }
+  }
+  STATE.economy.totalEarned+=dailyIncome;
+  STATE.economy.totalSpent+=dailyExpense;
+  STATE.economy.lastDailyIncome=dailyIncome;
+  STATE.economy.lastDailyExpense=dailyExpense;
+  STATE.economy.lastDailyProfit=dailyIncome-dailyExpense;
+
+  /* Random events */
+  if(Math.random()<0.04){
+    randomEvent();
+  }
+
+  refreshHUD();
+}
+
+function randomEvent(){
+  const events=[
+    ()=>{news('Piața imobiliară în creștere în Bluehaven City','warn');
+      STATE.player.ownedProperties.forEach(p=>{if(p.region==='bluehaven') p.value*=1.01;});},
+    ()=>{news('Festival în Pinecrest — turism în creștere','good');
+      STATE.player.ownedBusinesses.forEach(b=>{if(b.region==='pinecrest') b.lastIncome*=1.2;});},
+    ()=>{news('Recoltă bună în Greenfield — prețuri alimentare scad','good');
+      PRODUCTS.filter(p=>p.cat==='Alimentare').forEach(p=>STATE.world.marketTrend[p.name]=0.85);},
+    ()=>{news('Criză energetică — preț combustibil în creștere','bad');
+      STATE.world.marketTrend['Combustibil/L']=1.35;},
+    ()=>{news('Cerere mare pentru electronice','warn');
+      STATE.world.marketTrend['Telefon']=1.25;STATE.world.marketTrend['Laptop']=1.20;},
+    ()=>{news('Investiție străină în Westport — valori industriale up','good');
+      STATE.player.ownedProperties.forEach(p=>{if(p.region==='westport') p.value*=1.02;});
+      STATE.player.ownedLand.forEach(l=>{if(l.region==='westport') l.value*=1.02;});},
+  ];
+  pick(events)();
+}
+
+/* ============================================================
+   PAN & ZOOM on world
+   ============================================================ */
+let pan={x:0,y:0,scale:1,dragging:false,sx:0,sy:0};
+function setupPan(){
+  const stage=$('#stage');
+  const world=$('#world');
+  stage.addEventListener('mousedown',startPan);
+  stage.addEventListener('touchstart',startPan,{passive:false});
+  window.addEventListener('mousemove',movePan);
+  window.addEventListener('touchmove',movePan,{passive:false});
+  window.addEventListener('mouseup',endPan);
+  window.addEventListener('touchend',endPan);
+  /* Wheel zoom (desktop) */
+  stage.addEventListener('wheel',e=>{
+    e.preventDefault();
+    pan.scale=clamp(pan.scale*(e.deltaY<0?1.08:0.92),0.5,2.0);
+    applyTransform();
+  },{passive:false});
+}
+function startPan(e){
+  if(e.target.closest('.building')) return; /* let building clicks pass */
+  pan.dragging=true;
+  const p=pt(e);
+  pan.sx=p.x-pan.x;
+  pan.sy=p.y-pan.y;
+  document.body.style.cursor='grabbing';
+}
+function movePan(e){
+  if(!pan.dragging) return;
+  e.preventDefault?.();
+  const p=pt(e);
+  pan.x=p.x-pan.sx;
+  pan.y=p.y-pan.sy;
+  applyTransform();
+}
+function endPan(){
+  pan.dragging=false;
+  document.body.style.cursor='';
+}
+function pt(e){
+  if(e.touches&&e.touches[0]) return{x:e.touches[0].clientX,y:e.touches[0].clientY};
+  return{x:e.clientX,y:e.clientY};
+}
+function applyTransform(){
+  const w=$('#world');
+  const isPortrait=window.matchMedia('(max-aspect-ratio:1/1)').matches;
+  const tilt=isPortrait?30:42;
+  const baseScale=isPortrait?.42:.55;
+  const s=baseScale*pan.scale;
+  w.style.transform=`translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) perspective(2200px) rotateX(${tilt}deg) scale(${s})`;
+}
+function panTo(wx,wy){
+  /* Center world coordinate wx,wy on screen.
+     Effective on-screen scale = baseScale * pan.scale (default 0.55 * 1 = 0.55). */
+  const cx=window.innerWidth/2, cy=window.innerHeight/2;
+  const effScale=0.55*pan.scale;
+  pan.x=cx-(wx*effScale);
+  pan.y=cy-(wy*effScale);
+  applyTransform();
+}
+
+/* ============================================================
+   SAVE / LOAD
+   ============================================================ */
+const SAVE_KEY='bluehaven_save_v0_0_1';
+function saveGame(){
+  try{
+    localStorage.setItem(SAVE_KEY,JSON.stringify(STATE));
+    toast('Salvat!','good');
+  }catch(e){toast('Eroare salvare!','bad');}
+}
+function loadGame(){
+  try{
+    const s=localStorage.getItem(SAVE_KEY);
+    if(!s) return false;
+    const data=JSON.parse(s);
+    Object.assign(STATE,data);
+    return true;
+  }catch(e){return false;}
+}
+function resetGame(){
+  if(!confirm('Sigur vrei să resetezi tot progresul?')) return;
+  localStorage.removeItem(SAVE_KEY);
+  location.reload();
+}
+
+/* ============================================================
+   TIME CONTROLS & SETTINGS
+   ============================================================ */
+function setupTimeControls(){
+  $('#t-pause').onclick=()=>{STATE.world.speed=0;setTimeActive('t-pause');};
+  $('#t-play').onclick=()=>{STATE.world.speed=1;setTimeActive('t-play');};
+  $('#t-ff').onclick=()=>{STATE.world.speed=2;setTimeActive('t-ff');};
+  $('#t-sleep').onclick=()=>sleepUntilMorning();
+}
+function setTimeActive(id){
+  $$('#time-ctl button').forEach(b=>b.classList.remove('active'));
+  $('#'+id).classList.add('active');
+}
+function sleepUntilMorning(){
+  /* Advance one full day, then set hour to 08:00 */
+  advanceDay();
+  STATE.world.hour=8;
+  updateStageVisual();
+  refreshHUD();
+  news('Ai dormit până dimineața.','good');
+}
+
+/* ============================================================
+   MENU WIRING
+   ============================================================ */
+function setupMenu(){
+  $$('.menu-btn').forEach(b=>{
+    b.onclick=()=>{
+      $$('.menu-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      openPanel(b.dataset.panel);
+    };
+  });
+  $('#ph-close').onclick=()=>closePanel();
+  $('#btnSave').onclick=saveGame;
+  $('#btnSettings').onclick=openSettings;
+  $('#btnNotif').onclick=()=>openPanel('report');
+  /* Click outside panel closes */
+  document.addEventListener('mousedown',e=>{
+    if(!e.target.closest('#panel') && !e.target.closest('#menu') && !e.target.closest('.building') && !e.target.closest('#hud')){
+      if($('#panel').classList.contains('open')) closePanel();
+    }
+  });
+}
+function openSettings(){
+  openPanel('report');
+  $('#ph-ico').textContent='⚙️';
+  $('#ph-title').textContent='Setări & Salvare';
+  $('#ph-body').innerHTML=`
+    <div class="section-title">Salvare</div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveGame()">Salvează acum</button>
+      <button class="btn btn-bad" onclick="resetGame()">Resetează jocul</button>
+    </div>
+    <div class="section-title">Viteză simulare</div>
+    <div class="kv">
+      <div class="k">Viteză curentă</div><div class="v">${STATE.world.speed===0?'Pauză':STATE.world.speed===1?'Normal':'Accelerat'}</div>
+      <div class="k">Zi curentă</div><div class="v">${STATE.world.day}</div>
+      <div class="k">Anotimp</div><div class="v">${STATE.world.season}</div>
+      <div class="k">Vreme</div><div class="v">${STATE.world.weather}</div>
+      <div class="k">Versiune</div><div class="v">${STATE.version}</div>
+    </div>
+    <div class="section-title">Despre</div>
+    <div class="b-info">BLUEHAVEN v0.0.1 — Economic Life Simulator. Implementare completă a Părții 1 din specificație: lume, proprietăți, joburi, magazine, afaceri, finanțe. Partea 2 va adăuga agricultura, industria, producția, transportul, bursa și populația.</div>
+  `;
+}
+
+/* ============================================================
+   SPLASH / BOOT
+   ============================================================ */
+function bootSplash(){
+  const ldr=$('#ldr');
+  let p=0;
+  const intv=setInterval(()=>{
+    p=Math.min(100,p+Math.random()*15);
+    ldr.style.width=p+'%';
+    if(p>=100){
+      clearInterval(intv);
+      setTimeout(()=>{
+        $('#startBtn').classList.add('show');
+      },300);
+    }
+  },180);
+  $('#startBtn').onclick=startGame;
+}
+function startGame(){
+  $('#splash').classList.add('hide');
+  setTimeout(()=>$('#splash').remove(),700);
+  /* If a save exists, load it */
+  loadGame();
+  buildWorld();
+  refreshHUD();
+  setupPan();
+  applyTransform();
+  setupMenu();
+  setupTimeControls();
+  requestAnimationFrame(gameLoop);
+  /* Welcome message */
+  setTimeout(()=>{
+    news('Bun venit în Bluehaven! Ziua 1 începe.','good');
+    news('Apasă pe clădiri pentru a interacționa.','warn');
+  },500);
+  /* Hide hint after 12s */
+  setTimeout(()=>{const h=$('#hint');if(h)h.style.transition='opacity 1s';if(h)h.style.opacity='0';},12000);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+window.addEventListener('DOMContentLoaded',()=>{
+  bootSplash();
+});
+
+/* Expose for inline onclick */
+Object.assign(window,{
+  selectBuilding,openPanel,closePanel,flyToRegion,buyProperty,buyWithMortgage,rentProperty,
+  sellProperty,repairProp,rentOutProp,endRental,moveOut,buyBusiness,sellBusiness,manageBiz,
+  hireStaff,fireStaff,orderStock,adjustMarkup,upgradeBiz,openBiz,buyLand,sellLand,buildOnLand,
+  developPlot,openSpecialPlot,applyJob,quitJob,buyProduct,consumeProduct,bankOp,savingsOp,
+  applyLoan,payLoan,repayLoanFull,enrollUniv,enrollSchool,treatHospital,saveGame,resetGame,
+  manageProp,toast,news,
+});
+</script>
+</body>
+</html>
