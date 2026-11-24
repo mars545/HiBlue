@@ -120,7 +120,8 @@ jobs:
               t.write_text(c, encoding="utf-8", newline="\n")
           (out / "hiblue.txt").write_text("".join("=== FILE: %s ===\n%s" % (p, c) for p, c in files.items()), encoding="utf-8", newline="\n")
 
-          ver = ups[-1][1] if ups else "base"
+          vm = re.search(r'versionName\s*=\s*"([^"]+)"', files.get("app/build.gradle.kts", ""))
+          ver = vm.group(1) if vm else (ups[-1][1] if ups else "base")
           if os.environ.get("GITHUB_OUTPUT"):
               with open(os.environ["GITHUB_OUTPUT"], "a") as o:
                   o.write("ver=%s\n" % ver)
