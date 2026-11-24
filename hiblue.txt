@@ -6702,7 +6702,7 @@ class BubbleService : Service() {
         private const val NOTIF_ID = 2001
 
         @Volatile var active = false
-        @Volatile var appVisible = true
+        @Volatile var appInForeground = true
         private var current: BubbleService? = null
         /** (stare, conv) -> JS: "closed" când bula e închisă. Setat de MainActivity. */
         @Volatile var onEvent: ((String, String?) -> Unit)? = null
@@ -6728,7 +6728,7 @@ class BubbleService : Service() {
         }
 
         fun setAppVisible(v: Boolean) {
-            appVisible = v
+            appInForeground = v
             val s = current ?: return
             s.handler.post { s.applyVisibility() }
         }
@@ -6859,7 +6859,7 @@ class BubbleService : Service() {
     }
 
     private fun applyVisibility() {
-        root?.visibility = if (appVisible) View.GONE else View.VISIBLE
+        root?.visibility = if (appInForeground) View.GONE else View.VISIBLE
     }
 
     private fun openApp() {
